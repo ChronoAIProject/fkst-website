@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Doctrine | fkst</title>
+    <meta
+      name="description"
+      content="Selected fkst doctrine highlights: marker-as-fact, codex-judgment gates, host write posture, and one current system shape."
+    >
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="fkst home">fkst</a>
+      <nav class="top-nav" aria-label="Primary">
+        <a href="./">Home</a>
+        <a href="architecture.html">Architecture</a>
+        <span aria-current="page">Doctrine</span>
+        <a href="https://github.com/ChronoAIProject/fkst-substrate">fkst-substrate</a>
+        <a href="https://github.com/ChronoAIProject/fkst-packages">fkst-packages</a>
+        <a href="https://github.com/ChronoAIProject/fkst-website">fkst-website</a>
+      </nav>
+      <div class="language-switch" aria-label="Language">
+        <span aria-current="page">EN</span>
+        <a href="zh/doctrine.html">中文</a>
+      </div>
+    </header>
+
+    <main>
+      <section class="page-header" aria-labelledby="page-title">
+        <p class="eyebrow">Doctrine highlights</p>
+        <h1 id="page-title">A small set of rules keeps autonomy legible.</h1>
+        <p class="page-intro">
+          fkst favors durable facts, explicit gates, and current-state design.
+          These highlights are selected doctrine, not a complete contract.
+        </p>
+      </section>
+
+      <div class="page-content">
+        <section class="content-section" aria-labelledby="markers">
+          <h2 id="markers">Markers are facts</h2>
+          <div>
+            <p>
+              GitHub is eventually consistent, so fkst writes marker records as
+              facts and uses version-CAS style claims around them. The marker is
+              not decorative metadata; it is the observable state a later worker
+              can read, compare, and advance.
+            </p>
+          </div>
+        </section>
+
+        <section class="content-section" aria-labelledby="gates">
+          <h2 id="gates">Gates judge pipelines</h2>
+          <div>
+            <p>
+              Gates are codex-judgment pipelines over the work product and
+              evidence. They are not per-event human labels sprinkled through
+              the queue. The review is explicit, repeatable, and tied to the
+              proposal or delivery stage being judged.
+            </p>
+            <p>
+              Write posture is also explicit. The website package has one host
+              environment fact for publishing: FKST_SITE_WRITE=1 enables real
+              writes, and missing publish configuration fails closed.
+            </p>
+          </div>
+        </section>
+
+        <section class="content-section" aria-labelledby="current-shape">
+          <h2 id="current-shape">One current shape</h2>
+          <div>
+            <p>
+              fkst does not keep backward-compatibility modes, deprecated
+              shims, or speculative branches in the system. When the contract
+              changes, the current shape changes with it.
+            </p>
+            <p>
+              New patterns must serve a proven present problem. The bias is to
+              keep the runtime and packages small enough that every visible
+              mechanism earns its place.
+            </p>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <p><a href="./">Back to home</a></p>
+    </footer>
+  </body>
+</html>
