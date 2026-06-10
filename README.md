@@ -1,6 +1,10 @@
 # fkst-website
 
-fkst 生态的第三个仓（库 C）：跑在 **fkst-substrate** 引擎上的 website 域 Lua package 库。它以 [fkst-packages](https://github.com/ChronoAIProject/fkst-packages)（库 B）的包为基础做组合开发，自身只承载 website 域的行为层。
+The third repo (library C) of the fkst ecosystem: a website-domain Lua package library running on the **fkst-substrate** engine. It builds on the packages of [fkst-packages](https://github.com/ChronoAIProject/fkst-packages) (library B) through composition and only carries the website-domain behavior layer.
+
+This repo is **English-primary, zh-en bilingual**: source files are English; external artifacts (docs, issues, PRs) are English-first with Chinese as a secondary layer; the site itself is English-first with a Chinese version.
+
+（中文：fkst 生态第三仓（库 C），website 域 Lua 包库，组合库 B 的包开发；本仓英文为主、中英双语。）
 
 ## 仓定位与扩展模型
 
