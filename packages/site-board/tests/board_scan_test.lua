@@ -97,8 +97,13 @@ return {
     t.eq(board, nil)
     t.is_true(err:find("issues", 1, true) ~= nil)
     board, err = core.build_board_json("owner/x", ISSUES_JSON, "{}", 0)
-    -- A JSON object decodes to a table, so it passes the array check; an empty
-    -- string or non-JSON must not.
+    t.eq(board, nil)
+    t.is_true(err:find("prs", 1, true) ~= nil)
+    board, err = core.build_board_json("owner/x", ISSUES_JSON, '  {"message":"bad"}', 0)
+    t.eq(board, nil)
+    t.is_true(err:find("prs", 1, true) ~= nil)
+    board, err = core.build_board_json("owner/x", ISSUES_JSON, "  []\n", 0)
+    t.is_true(board ~= nil)
     board, err = core.build_board_json("owner/x", ISSUES_JSON, "", 0)
     t.eq(board, nil)
     board, err = core.build_board_json("bad repo", ISSUES_JSON, PRS_JSON, 0)
