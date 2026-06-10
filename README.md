@@ -2,6 +2,8 @@
 
 fkst 生态的第三个仓（库 C）：跑在 **fkst-substrate** 引擎上的 website 域 Lua package 库。它以 [fkst-packages](https://github.com/ChronoAIProject/fkst-packages)（库 B）的包为基础做组合开发，自身只承载 website 域的行为层。
 
+官方网站：https://chronoaiproject.github.io/fkst-website/
+
 ## 仓定位与扩展模型
 
 本仓遵循与 fkst-packages 相同的 engine↔package 契约（权威：fkst-substrate 的 `docs/package-repo-contract.md`）。对库 B 包的复用按三档扩展力度，从低往高用，逢真需求才升级：
