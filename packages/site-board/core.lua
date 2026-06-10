@@ -85,6 +85,9 @@ local function is_json_array(raw)
   if type(raw) ~= "string" or raw == "" then
     return false
   end
+  if raw:match("^%s*%[") == nil then
+    return false
+  end
   local ok, value = pcall(json.decode, raw)
   return ok and type(value) == "table"
 end
