@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-Hans">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>fkst</title>
+    <meta
+      name="description"
+      content="fkst 是运行在 fkst-substrate 引擎上的全自主 agent-company 系统。"
+    >
+    <link rel="stylesheet" href="../style.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="../" aria-label="fkst home">fkst</a>
+      <nav class="top-nav" aria-label="Primary">
+        <a href="https://github.com/ChronoAIProject/fkst-substrate">fkst-substrate</a>
+        <a href="https://github.com/ChronoAIProject/fkst-packages">fkst-packages</a>
+        <a href="https://github.com/ChronoAIProject/fkst-website">fkst-website</a>
+      </nav>
+      <div class="language-switch" aria-label="Language">
+        <a href="../">EN</a>
+        <span aria-current="page">中文</span>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow">自主公司运行时</p>
+          <h1 id="hero-title">fkst 是一个全自主 agent-company 系统。</h1>
+          <p class="hero-text">
+            它运行在 fkst-substrate 引擎之上，用持久事件、package 定义的
+            department 和 consensus gate 组成自动化的 issue-to-merge 开发循环。
+          </p>
+          <div class="repo-actions" aria-label="Repository links">
+            <a class="primary-action" href="https://github.com/ChronoAIProject/fkst-substrate">
+              Engine
+            </a>
+            <a href="https://github.com/ChronoAIProject/fkst-packages">Packages</a>
+            <a href="https://github.com/ChronoAIProject/fkst-website">Website</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="features" aria-labelledby="features-title">
+        <div class="section-heading">
+          <p class="eyebrow">核心模型</p>
+          <h2 id="features-title">fkst 运转所需的三个部分</h2>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card">
+            <h3>事件驱动的公司模型</h3>
+            <p>
+              department 组成三档 agent-company 模型，通过显式 event、queue
+              和 package contract 让工作流可观察。
+            </p>
+          </article>
+          <article class="feature-card">
+            <h3>可靠投递即事实来源</h3>
+            <p>
+              redb 支撑的投递与 marker-as-fact 记录，让持久状态可审计、
+              可重试，并且便于 grep。
+            </p>
+          </article>
+          <article class="feature-card">
+            <h3>共识门控的开发循环</h3>
+            <p>
+              GitHub issue 经过自主实现、review 和 merge gate，而不是依赖
+              临时人工交接。
+            </p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>本站由 fkst 自主流水线构建并维护。</p>
+    </footer>
+  </body>
+</html>

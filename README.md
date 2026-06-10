@@ -6,6 +6,8 @@ This repo is **English-primary, zh-en bilingual**: source files are English; ext
 
 （中文：fkst 生态第三仓（库 C），website 域 Lua 包库，组合库 B 的包开发；本仓英文为主、中英双语。）
 
+官方网站：https://chronoaiproject.github.io/fkst-website/
+
 ## 仓定位与扩展模型
 
 本仓遵循与 fkst-packages 相同的 engine↔package 契约（权威：fkst-substrate 的 `docs/package-repo-contract.md`）。对库 B 包的复用按三档扩展力度，从低往高用，逢真需求才升级：
