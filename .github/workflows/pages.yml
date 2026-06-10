@@ -65,8 +65,8 @@ jobs:
             echo "fkst-website dept=pages tag=skip PROBE paths=0 reason=empty-manifest results="
           elif [ "$network_errors" -eq "$checked" ]; then
             echo "fkst-website dept=pages tag=skip PROBE paths=$checked reason=all-paths-network-error results=$joined"
-          elif [ "$failures" -gt 0 ]; then
-            echo "fkst-website dept=pages tag=fail PROBE paths=$checked failures=$failures results=$joined"
+          elif [ "$failures" -gt 0 ] || [ "$network_errors" -gt 0 ]; then
+            echo "fkst-website dept=pages tag=fail PROBE paths=$checked failures=$failures network_errors=$network_errors results=$joined"
             exit 1
           else
             echo "fkst-website dept=pages tag=ok PROBE paths=$checked results=$joined"
