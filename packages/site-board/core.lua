@@ -1,5 +1,7 @@
 local M = {}
 
+M.SITE_BASE_URL = "https://chronoaiproject.github.io/fkst-website"
+
 -- Env access goes through exec_sync so tests can mock it and unmocked reads
 -- fail closed in test mode. Only allowlisted names are readable.
 local ENV_ALLOWLIST = {
@@ -51,6 +53,81 @@ end
 
 function M.shell_single_quote(value)
   return "'" .. tostring(value):gsub("'", "'\\''") .. "'"
+end
+
+local function trim(value)
+  return tostring(value):match("^%s*(.-)%s*$")
+end
+
+function M.read_probe_manifest(path)
+  local handle, open_err = io.open(path, "r")
+  if handle == nil then
+    return nil, "manifest open failed: " .. tostring(open_err)
+  end
+
+  local paths = {}
+  local seen = {}
+  for line in handle:lines() do
+    local item = trim(line:gsub("#.*$", ""))
+    if item ~= "" then
+      if item:sub(1, 1) ~= "/" or item:find("%s") ~= nil then
+        handle:close()
+        return nil, "invalid probe path: " .. item
+      end
+      if not seen[item] then
+        seen[item] = true
+        table.insert(paths, item)
+      end
+    end
+  end
+  handle:close()
+
+  if #paths == 0 then
+    return nil, "manifest has no probe paths"
+  end
+  return paths
+end
+
+function M.probe_url(path)
+  if type(path) ~= "string" or path:sub(1, 1) ~= "/" or path:find("%s") ~= nil then
+    error("invalid probe path: " .. tostring(path))
+  end
+  return M.SITE_BASE_URL .. path
+end
+
+function M.curl_probe_cmd(path)
+  return "curl -sL -o /dev/null -w '%{http_code}' -- " .. M.shell_single_quote(M.probe_url(path))
+end
+
+function M.classify_probe_result(result)
+  if type(result) ~= "table" or result.exit_code ~= 0 then
+    return "error"
+  end
+  local code = trim(result.stdout or "")
+  if code == "" then
+    return "error"
+  end
+  return code
+end
+
+local function encode_probe_item(item)
+  return tostring(item.path) .. ":" .. tostring(item.code)
+end
+
+function M.probe_log_fields(statuses, extra_fields)
+  local fields = {
+    "PROBE",
+    "paths=" .. tostring(#statuses),
+  }
+  for _, field in ipairs(extra_fields or {}) do
+    table.insert(fields, field)
+  end
+  local encoded = {}
+  for _, item in ipairs(statuses) do
+    table.insert(encoded, encode_probe_item(item))
+  end
+  table.insert(fields, "results=" .. table.concat(encoded, ","))
+  return fields
 end
 
 function M.is_valid_repo(repo)

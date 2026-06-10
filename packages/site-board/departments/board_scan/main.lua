@@ -4,6 +4,7 @@ local M = {}
 
 M.spec = {
   consumes = { "board_poll_tick" },
+  fanout = { "board_poll_tick" },
   stall_window = "30s",
 }
 
