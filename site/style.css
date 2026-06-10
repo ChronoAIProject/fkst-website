@@ -62,6 +62,8 @@ a:focus-visible {
 .site-header,
 .hero,
 .features,
+.page-header,
+.page-content,
 .site-footer {
   margin-inline: auto;
   max-width: 1120px;
@@ -91,11 +93,16 @@ a:focus-visible {
 }
 
 .top-nav a,
+.top-nav span,
 .language-switch a,
 .language-switch span {
   color: var(--muted);
   font-size: 0.94rem;
   font-weight: 650;
+}
+
+.top-nav span {
+  color: var(--text);
 }
 
 .language-switch {
@@ -185,6 +192,58 @@ h1 {
   padding-block: 18px 72px;
 }
 
+.page-header {
+  padding-block: clamp(54px, 9vw, 102px) 34px;
+}
+
+.page-header h1 {
+  font-size: clamp(2.7rem, 8vw, 5.8rem);
+}
+
+.page-intro {
+  color: var(--muted);
+  font-size: clamp(1.05rem, 2vw, 1.25rem);
+  max-width: 760px;
+}
+
+.page-content {
+  display: grid;
+  gap: 18px;
+  padding-block: 16px 72px;
+}
+
+.content-section {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.35fr);
+  padding-top: 28px;
+}
+
+.content-section h2 {
+  font-size: clamp(1.45rem, 3vw, 2.4rem);
+  margin-bottom: 0;
+}
+
+.content-section p {
+  color: var(--muted);
+  margin-bottom: 0;
+}
+
+.content-section p + p {
+  margin-top: 12px;
+}
+
+.content-section ul {
+  color: var(--muted);
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.content-section li + li {
+  margin-top: 10px;
+}
+
 .section-heading {
   border-top: 1px solid var(--line);
   padding-top: 34px;
@@ -252,6 +311,10 @@ h2 {
   }
 
   .feature-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .content-section {
     grid-template-columns: 1fr;
   }
 
