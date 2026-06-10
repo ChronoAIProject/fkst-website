@@ -36,38 +36,4 @@ jobs:
         uses: actions/deploy-pages@v4
 
       - name: Live probe published site
-        run: |
-          set -euo pipefail
-          checked=0
-          failures=0
-          network_errors=0
-          results=()
-          while IFS= read -r path || [ -n "$path" ]; do
-            path="${path%%#*}"
-            path="${path#"${path%%[![:space:]]*}"}"
-            path="${path%"${path##*[![:space:]]}"}"
-            [ -n "$path" ] || continue
-            checked=$((checked + 1))
-            url="https://chronoaiproject.github.io/fkst-website${path}"
-            code="$(curl -sL -o /dev/null -w '%{http_code}' -- "$url")" || code="error"
-            [ -n "$code" ] || code="error"
-            results+=("${path}:${code}")
-            if [ "$code" = "200" ]; then
-              continue
-            elif [ "$code" = "error" ]; then
-              network_errors=$((network_errors + 1))
-            else
-              failures=$((failures + 1))
-            fi
-          done < site/probe-manifest
-          joined="$(IFS=,; echo "${results[*]}")"
-          if [ "$checked" -eq 0 ]; then
-            echo "fkst-website dept=pages tag=skip PROBE paths=0 reason=empty-manifest results="
-          elif [ "$network_errors" -eq "$checked" ]; then
-            echo "fkst-website dept=pages tag=skip PROBE paths=$checked reason=all-paths-network-error results=$joined"
-          elif [ "$failures" -gt 0 ] || [ "$network_errors" -gt 0 ]; then
-            echo "fkst-website dept=pages tag=fail PROBE paths=$checked failures=$failures network_errors=$network_errors results=$joined"
-            exit 1
-          else
-            echo "fkst-website dept=pages tag=ok PROBE paths=$checked results=$joined"
-          fi
+        run: scripts/probe_site.sh
