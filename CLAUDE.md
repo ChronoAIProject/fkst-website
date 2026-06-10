@@ -1,8 +1,10 @@
 # CLAUDE.md
 
-## 工作语言
+## Working language
 
-源文件内部一律英文：`.lua`、`.sh`、`.py` 等里的注释、docstring、log/error 文本、模板字符串和标识符都保持英文。源文件之外的对外产物（对话回复、文档、issue/PR/comment、变更说明）用中文；代码标识符、路径、crate/命令/协议名、测试断言、引用原文保留英文。不要中英混杂凑句子。
+Source files are English throughout: comments, docstrings, log/error text, template strings, and identifiers in `.lua`, `.sh`, `.py` stay English. External artifacts of THIS repo (docs, issues, PRs, comments, change notes) are **English-primary**; Chinese is welcome as a secondary bilingual layer where it adds value, but the canonical text is English. Site content is English-first with a Chinese version (zh-en bilingual). Do not mix languages mid-sentence; code identifiers, paths, command/protocol names, and quoted originals stay English.
+
+（中文摘要：本仓语言英文为主、中英双语；源文件全英文；对外产物以英文为准，中文为辅；站点英文优先、提供中文版。）
 
 ## 这个仓库是什么
 
