@@ -25,7 +25,9 @@ engine↔package 契约的权威是 fkst-substrate 的 `docs/package-repo-contra
 
 - **库 B（Lua 主）**：整个仓就是 Lua，committed Lua 源码放根 `packages/<pkg>/`；`scripts/run.sh` 生成 `.fkst/local-packages -> ../packages` 作为引擎加载的运行时视图（gitignore）。Lua 放根天经地义。
 - **本仓（网站源码主）**：仓库根是**网站源码**（`site/` 等），**Lua 包不放根**——本仓自有 Lua 包 committed 在 **`.fkst/local-packages/<pkg>/`**，让根保持纯网站源码、Lua 收进引擎运行时命名空间。引擎直接从 `.fkst/local-packages` 加载（committed home，无需生成步骤）。
-- **`.fkst/` 在本仓是混合的**：committed = `.fkst/local-packages/`（本仓自有 Lua 包）+ `.fkst/std/`（本仓自定义 std，见下）；runtime（gitignore）= `.fkst/packages/`（外部引用包 = 库 B trio 的运行时落点）、`.fkst/run/`、`.fkst/env`。即库 B「`.fkst/` 全是 runtime-generated」的不变式在本仓**对 `.fkst/local-packages`/`.fkst/std` 放宽**为 committed——这正是语言主属性差异的代价。
+- **`.fkst/` 是运行时接口目录，本就 tracked + ignored 混合，不是「全 runtime-generated」**：每个 fkst 仓的 `.fkst/` 都**已 tracked** `.fkst/env.example` 与 substrate source-pin，只 **ignore** `.fkst/run/`、`.fkst/env`、外部引用包落点 `.fkst/packages/`。本仓（host）在这个既有事实上**additionally track** `.fkst/local-packages/`（本仓自有 Lua 包）+ `.fkst/std/`（本仓自定义 std，见下）。因为 `.fkst/` 从来就不是纯运行时，把 committed Lua 源码放进 `.fkst/` 与既有的 tracked 配置**完全一致、无任何代价**——只是语言主属性不同导致 tracked 集合不同。
+  - 本仓 `.gitignore`：**track** `.fkst/local-packages/`、`.fkst/std/`、substrate source-pin、`.fkst/env.example`；**ignore** `.fkst/packages/`、`.fkst/run/`、`.fkst/env`。
+  - 对比库 B（Lua 主）：`.fkst/local-packages` 在库 B 是 **ignore**（`-> ../packages` 的生成视图）；在本仓是 **track**（committed Lua 的家）。同一路径、相反 git 状态，皆因语言主属性——这是设计，明确写在此以免误删。
 - **跨仓组合（已有规则，重申）**：引用库 B 的包 = pin git ref + 额外 `--package-root`，只经 `pkg.queue` 限定名集成，**不跨 require**。
 - **迁移状态**：当前 `site-board` 仍在根 `packages/`（旧布局）；按本规则迁到 `.fkst/local-packages/site-board/`（连带 `scripts/run.sh` 的 `--package-root` 与 `.gitignore` 调整）是后续实现步骤，本节先把目标规则写明。
 
