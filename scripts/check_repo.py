@@ -307,7 +307,7 @@ def unguarded_graphql_first_connection_lines(text: str) -> list[int]:
 
 
 def check_line_limit(root: Path, violations: list[str]) -> None:
-    for scan_root_name in ("packages", "scripts"):
+    for scan_root_name in (".fkst/local-packages", "scripts"):
         scan_root = root / scan_root_name
         if not scan_root.exists():
             continue
@@ -324,7 +324,7 @@ def check_line_limit(root: Path, violations: list[str]) -> None:
 
 
 def package_dirs(root: Path) -> list[Path]:
-    packages = root / "packages"
+    packages = root / ".fkst" / "local-packages"
     if not packages.exists():
         return []
     return [path for path in sorted(packages.iterdir()) if path.is_dir()]
@@ -569,7 +569,7 @@ def check_helper_reachability(root: Path, violations: list[str]) -> None:
 
 
 def check_graphql_connection_guards(root: Path, warnings: list[str]) -> None:
-    packages = root / "packages"
+    packages = root / ".fkst" / "local-packages"
     if not packages.exists():
         return
     for path in sorted(packages.rglob("*.lua")):

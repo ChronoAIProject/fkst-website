@@ -28,7 +28,7 @@
 #       Start the real fkst-framework supervise event loop for one package.
 #       Uses fresh temporary FKST_RUNTIME_ROOT and FKST_DURABLE_ROOT directories
 #       and runs in the foreground until Ctrl-C. FKST_PROJECT_ROOT can override
-#       the default project root of packages/<package>.
+#       the default project root of .fkst/local-packages/<package>.
 #
 #   scripts/run.sh build
 #       Local-only helper: update the fkst-substrate dev checkout and build
@@ -40,6 +40,10 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# This host repo is website-source-primary: its own Lua packages are committed
+# under .fkst/local-packages/ (root stays website source). LOCAL_PKG is the
+# committed package home the engine loads from (no generated-symlink view).
+LOCAL_PKG="$ROOT/.fkst/local-packages"
 
 resolve_bin() {
   if [ -z "${BIN:-}" ] && [ -f "$ROOT/.env" ]; then
@@ -135,7 +139,7 @@ check_test_file_coverage() {
 
   (
     cd "$ROOT"
-    find packages \( -path '*/tests/*_test.lua' -o -path '*/departments/*/*_test.lua' \) -type f -print | LC_ALL=C sort -u
+    find .fkst/local-packages \( -path '*/tests/*_test.lua' -o -path '*/departments/*/*_test.lua' \) -type f -print | LC_ALL=C sort -u
   ) > "$expected"
 
   python3 - "$report_dir" <<'PY' | LC_ALL=C sort -u > "$actual"
@@ -163,7 +167,7 @@ for report_path in sorted(report_dir.glob("*.json")):
             continue
         if not (file_name.startswith("tests/") or file_name.startswith("departments/")) or not file_name.endswith("_test.lua"):
             continue
-        print(f"packages/{owner}/{file_name}")
+        print(f".fkst/local-packages/{owner}/{file_name}")
 PY
 
   comm -23 "$expected" "$actual" > "$missing"
@@ -197,7 +201,7 @@ cmd_test() {
     fi
   fi
 
-  for pkg in "$ROOT"/packages/*/; do
+  for pkg in "$LOCAL_PKG"/*/; do
     [ -d "$pkg" ] || continue
     name="$(basename "$pkg")"
     if [ -n "$target" ] && [ "$name" != "$target" ]; then continue; fi
@@ -244,7 +248,7 @@ cmd_test() {
 
 collect_composed_package() {
   local name="$1" pkg dep
-  pkg="$ROOT/packages/$name"
+  pkg="$LOCAL_PKG/$name"
   [ -d "$pkg" ] || { echo "error: composed package dependency not found: $name" >&2; return 1; }
   case " ${COMPOSED_SEEN[*]-} " in
     *" $name "*) return 0 ;;
@@ -264,7 +268,7 @@ collect_composed_package() {
 cmd_test_composed() {
   local pkg name args
   COMPOSED_SEEN=()
-  for pkg in "$ROOT"/packages/*/; do
+  for pkg in "$LOCAL_PKG"/*/; do
     [ -d "$pkg" ] || continue
     [ -f "$pkg/composed.deps" ] || continue
     name="$(basename "$pkg")"
@@ -277,7 +281,7 @@ cmd_test_composed() {
 
   args=()
   for name in "${COMPOSED_SEEN[@]}"; do
-    args+=(--package-root "$ROOT/packages/$name")
+    args+=(--package-root "$LOCAL_PKG/$name")
   done
   echo "=== composed conformance ==="
   "$BIN" conformance --project-root "$ROOT" "${args[@]}"
@@ -346,7 +350,7 @@ cmd_run() {
     event="$inline_event"
   fi
 
-  local pkgdir="$ROOT/packages/$pkg" lua
+  local pkgdir="$LOCAL_PKG/$pkg" lua
   lua="$pkgdir/departments/$dept/main.lua"
   [ -f "$lua" ] || { echo "error: no department at $lua" >&2; exit 1; }
 
@@ -391,7 +395,7 @@ cmd_supervise() {
   if [ -z "$pkg" ]; then
     echo "usage: scripts/run.sh supervise <package>" >&2; exit 1
   fi
-  local pkgdir="$ROOT/packages/$pkg"
+  local pkgdir="$LOCAL_PKG/$pkg"
   [ -d "$pkgdir" ] || { echo "error: no package at $pkgdir" >&2; exit 1; }
 
   local project_root rt durable
