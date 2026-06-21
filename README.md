@@ -24,7 +24,7 @@ This repo is **English-primary, zh-en bilingual**: source files are English; ext
 
 ## 包
 
-- `packages/site-board/`（flat）：站点数据源 v0。cron 轮询 `FKST_GITHUB_REPO` 的 open issue/PR 板面，构建 `fkst-website.board.v1` 快照 JSON；`FKST_SITE_WRITE=1` 且设置 `FKST_SITE_PUBLISH_ROOT` 时原子发布 `board.json`（写 tmp + mv），否则 dry-run 只记日志。GitHub Pages deploy 后读取 `site/probe-manifest` 对发布站点做只读 live probe，只输出可 grep 的 `PROBE` ok/fail/skip 日志。
+- `.fkst/local-packages/site-board/`（flat）：站点数据源 v0。cron 轮询 `FKST_GITHUB_REPO` 的 open issue/PR 板面，构建 `fkst-website.board.v1` 快照 JSON；`FKST_SITE_WRITE=1` 且设置 `FKST_SITE_PUBLISH_ROOT` 时原子发布 `board.json`（写 tmp + mv），否则 dry-run 只记日志。GitHub Pages deploy 后读取 `site/probe-manifest` 对发布站点做只读 live probe，只输出可 grep 的 `PROBE` ok/fail/skip 日志。
 
 ## 构建 / 测试
 
