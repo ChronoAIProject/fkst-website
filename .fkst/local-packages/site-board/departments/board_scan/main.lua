@@ -1,5 +1,8 @@
 local core = require("core")
 local text = require("std.text")
+-- Cross-repo: 库 B's published `contract` library, consumed by exact git sha
+-- via [[external_sources]] in fkst.workspace.toml (resolved sha in fkst.lock).
+local contract_strings = require("contract.strings")
 
 local M = {}
 
@@ -22,6 +25,8 @@ function pipeline(event)
   -- delivered (event.queue is board_poll_tick or idle-detector.system_idle).
   core.log_line("info", "board_scan", "TRIGGER", {
     "queue=" .. text.trim(tostring(event and event.queue or "")),
+    -- contract.strings.json_string resolves cross-repo from 库 B @ locked sha.
+    "contract_probe=" .. contract_strings.json_string(text.trim(tostring(event and event.queue or ""))),
   })
   local repo = core.read_env("FKST_GITHUB_REPO")
   if repo == nil then
