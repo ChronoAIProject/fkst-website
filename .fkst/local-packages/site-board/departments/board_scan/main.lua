@@ -1,9 +1,10 @@
 local core = require("core")
+local text = require("std.text")
 
 local M = {}
 
 M.spec = {
-  consumes = { "board_poll_tick" },
+  consumes = { "board_poll_tick", "idle-detector.system_idle" },
   stall_window = "30s",
 }
 
@@ -16,6 +17,12 @@ local function fetch_list(cmd, context)
 end
 
 function pipeline(event)
+  -- Trigger trace: exercises the website's own std (std.text via lib_deps) and
+  -- proves the cross-package event subscription to idle-detector.system_idle is
+  -- delivered (event.queue is board_poll_tick or idle-detector.system_idle).
+  core.log_line("info", "board_scan", "TRIGGER", {
+    "queue=" .. text.trim(tostring(event and event.queue or "")),
+  })
   local repo = core.read_env("FKST_GITHUB_REPO")
   if repo == nil then
     core.log_line("warn", "board_scan", "SKIP", { "reason=FKST_GITHUB_REPO is unset" })

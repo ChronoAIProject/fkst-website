@@ -207,7 +207,7 @@ cmd_test() {
     if [ -n "$target" ] && [ "$name" != "$target" ]; then continue; fi
     echo "=== $name ==="
     ran=$((ran + 1))
-    if [ -f "$pkg/composed.deps" ]; then
+    if [ -f "$pkg/composed.deps" ] || grep -q '^kind = "package\.composed"' "$pkg/fkst.toml" 2>/dev/null; then
       echo "skip single-package conformance for composed package: $name"
     else
       if ! "$BIN" conformance --project-root "$pkg" --package-root "$pkg"; then
