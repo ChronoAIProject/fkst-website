@@ -5,7 +5,10 @@ name = "site-board"
 root = "."
 
 [lib_deps]
-libraries = ["std"]
+# "std" = this repo's own workspace-internal library; "contract" = 库 B's
+# published platform core consumed CROSS-REPO by git sha (see [[external_sources]]
+# in fkst.workspace.toml). Both resolve through the same per-unit lexical resolver.
+libraries = ["std", "contract"]
 
 [event_deps]
 packages = ["idle-detector"]
