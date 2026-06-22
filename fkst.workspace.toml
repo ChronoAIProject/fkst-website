@@ -1,0 +1,11 @@
+[workspace]
+# fkst-website is a website-source-primary host repo: its OWN Lua packages are committed
+# under .fkst/local-packages/<pkg> (the repo root stays website source). The platform trio
+# (github-devloop/github-proxy/consensus) is EXTERNAL infra supplied via --package-root from
+# a pinned fkst-packages clone — the engine catalogs those explicit external roots from their
+# own source manifest, so this manifest declares only this repo's own units.
+units = [".fkst/local-packages/*"]
+packages = [".fkst/local-packages/*"]
+
+[registries]
+workspace = "workspace"
