@@ -1,5 +1,11 @@
-kind = "package"
+kind = "package.composed"
 name = "site-board"
 
 [code]
 root = "."
+
+[lib_deps]
+libraries = ["std"]
+
+[event_deps]
+packages = ["idle-detector"]

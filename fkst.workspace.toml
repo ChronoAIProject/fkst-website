@@ -4,8 +4,9 @@
 # (github-devloop/github-proxy/consensus) is EXTERNAL infra supplied via --package-root from
 # a pinned fkst-packages clone — the engine catalogs those explicit external roots from their
 # own source manifest, so this manifest declares only this repo's own units.
-units = [".fkst/local-packages/*"]
+units = [".fkst/local-packages/*", ".fkst/std"]
 packages = [".fkst/local-packages/*"]
+libraries = [".fkst/std"]
 
 [registries]
 workspace = "workspace"
