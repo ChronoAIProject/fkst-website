@@ -27,10 +27,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          pin="$(head -n 1 .conformance/fkst-packages.ref | tr -d '[:space:]')"
+          pin="$(head -n 1 .fkst-packages-ref | tr -d '[:space:]')"
           test -n "$pin"
-          git clone --no-checkout https://github.com/ChronoAIProject/fkst-packages.git .conformance/fkst-packages
-          git -C .conformance/fkst-packages checkout "$pin"
+          mkdir -p .fkst/run
+          git clone --no-checkout https://github.com/ChronoAIProject/fkst-packages.git .fkst/run/fkst-packages-conformance
+          git -C .fkst/run/fkst-packages-conformance checkout "$pin"
           echo "fkst-packages conformance pin: $pin"
 
       - name: Resolve fkst-substrate source pin

@@ -41,14 +41,19 @@ CI 从 `.fkst-substrate-ref`（git source-pin）checkout 引擎源码并构建 f
 This repo does not carry a local `scripts/check_repo.py` copy. Source ratchets
 come from a pinned `ChronoAIProject/fkst-packages` checkout:
 
-- Pin: `.conformance/fkst-packages.ref`
-- Host allowlists: `.conformance/check_repo.allowlists/`
-- Engine package roots: `.conformance/package-roots`
-- Hydrated checkout: `.conformance/fkst-packages/` (ignored)
+- Cross-repo version pins are top-level `.fkst-<dependency>-ref` files:
+  `.fkst-substrate-ref` and `.fkst-packages-ref`.
+- Host conformance config lives under `.fkst/conformance/`.
+- Host allowlists: `.fkst/conformance/allowlists/`
+- Engine package roots: `.fkst/conformance/package-roots`
+- Hydrated checkout: `.fkst/run/fkst-packages-conformance/` (ignored)
 
-To bump the shared ratchets, update `.conformance/fkst-packages.ref` to the new
+There is no separate per-repo dot-conformance directory and no copied ratchet
+infrastructure in this repo.
+
+To bump the shared ratchets, update `.fkst-packages-ref` to the new
 full fkst-packages commit SHA, verify that SHA exists on the intended upstream
-branch, remove `.conformance/fkst-packages/`, then run `scripts/run.sh check`
+branch, remove `.fkst/run/fkst-packages-conformance/`, then run `scripts/run.sh check`
 and `scripts/run.sh test`.
 
 ## 约定
