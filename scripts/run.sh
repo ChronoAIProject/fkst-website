@@ -4,11 +4,11 @@
 #   scripts/run.sh test [package]
 #       Run fkst-framework --self-test once, then conformance + test for flat
 #       packages. Composed packages skip single-package conformance and still
-#       run tests. Full test also runs composed graph conformance. This is the
-#       single CI and local test entrypoint.
+#       run tests. Full test also runs composed graph conformance.
 #
 #   scripts/run.sh check
-#       Run hermetic repository checks only. Does not resolve or execute BIN.
+#       Run shared source ratchets from the pinned fkst-packages checkout, then
+#       run engine host conformance for this repo's package graph.
 #
 #   scripts/run.sh test-composed
 #       Run only composed graph conformance for packages with composed.deps.
@@ -44,6 +44,104 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # under .fkst/local-packages/ (root stays website source). LOCAL_PKG is the
 # committed package home the engine loads from (no generated-symlink view).
 LOCAL_PKG="$ROOT/.fkst/local-packages"
+CONFORMANCE_DIR="$ROOT/.conformance"
+FKST_PACKAGES_PIN_FILE="$CONFORMANCE_DIR/fkst-packages.ref"
+FKST_PACKAGES_CHECKOUT="$CONFORMANCE_DIR/fkst-packages"
+FKST_PACKAGES_REPO_URL="https://github.com/ChronoAIProject/fkst-packages.git"
+CHECK_REPO_ALLOWLIST_DIR="$CONFORMANCE_DIR/check_repo.allowlists"
+CONFORMANCE_PACKAGE_ROOTS="$CONFORMANCE_DIR/package-roots"
+
+read_fkst_packages_pin() {
+  local pin
+  if [ ! -f "$FKST_PACKAGES_PIN_FILE" ]; then
+    echo "error: missing shared conformance pin: $FKST_PACKAGES_PIN_FILE" >&2
+    exit 1
+  fi
+  pin="$(head -n 1 "$FKST_PACKAGES_PIN_FILE" | tr -d '[:space:]')"
+  if ! [[ "$pin" =~ ^[0-9a-f]{40}$ ]]; then
+    echo "error: shared conformance pin must be a full git SHA: $FKST_PACKAGES_PIN_FILE" >&2
+    exit 1
+  fi
+  printf '%s\n' "$pin"
+}
+
+ensure_fkst_packages_checkout() {
+  local pin current
+  pin="$(read_fkst_packages_pin)"
+
+  if [ -n "${FKST_PACKAGES_CONFORMANCE_ROOT:-}" ]; then
+    if [ -n "${CI:-}" ] || [ -n "${GITHUB_ACTIONS:-}" ]; then
+      echo "error: FKST_PACKAGES_CONFORMANCE_ROOT is local-only; CI must use $FKST_PACKAGES_PIN_FILE" >&2
+      exit 1
+    fi
+    if [ ! -f "$FKST_PACKAGES_CONFORMANCE_ROOT/scripts/check_repo.py" ]; then
+      echo "error: FKST_PACKAGES_CONFORMANCE_ROOT lacks scripts/check_repo.py: $FKST_PACKAGES_CONFORMANCE_ROOT" >&2
+      exit 1
+    fi
+    echo "warning: using local fkst-packages conformance root: $FKST_PACKAGES_CONFORMANCE_ROOT" >&2
+    printf '%s\n' "$FKST_PACKAGES_CONFORMANCE_ROOT"
+    return 0
+  fi
+
+  if [ -d "$FKST_PACKAGES_CHECKOUT/.git" ]; then
+    current="$(git -C "$FKST_PACKAGES_CHECKOUT" rev-parse HEAD 2>/dev/null || true)"
+    if [ "$current" = "$pin" ]; then
+      printf '%s\n' "$FKST_PACKAGES_CHECKOUT"
+      return 0
+    fi
+    rm -rf "$FKST_PACKAGES_CHECKOUT"
+  elif [ -e "$FKST_PACKAGES_CHECKOUT" ]; then
+    rm -rf "$FKST_PACKAGES_CHECKOUT"
+  fi
+
+  mkdir -p "$CONFORMANCE_DIR"
+  git clone --quiet --no-checkout "$FKST_PACKAGES_REPO_URL" "$FKST_PACKAGES_CHECKOUT"
+  git -C "$FKST_PACKAGES_CHECKOUT" checkout --quiet "$pin"
+  printf '%s\n' "$FKST_PACKAGES_CHECKOUT"
+}
+
+run_shared_source_ratchets() {
+  local fkst_packages="$1" script
+  script="$fkst_packages/scripts/check_repo.py"
+  if ! grep -q -- "--project-root" "$script"; then
+    echo "error: pinned fkst-packages check_repo.py does not expose --project-root" >&2
+    echo "  bump .conformance/fkst-packages.ref to a Track P commit with the shared host-repo interface" >&2
+    return 1
+  fi
+  python3 "$script" --project-root "$ROOT" --allowlist-dir "$CHECK_REPO_ALLOWLIST_DIR"
+}
+
+build_engine_package_root_args() {
+  local fkst_packages="$1" line path
+  if [ ! -f "$CONFORMANCE_PACKAGE_ROOTS" ]; then
+    echo "error: missing conformance package-root config: $CONFORMANCE_PACKAGE_ROOTS" >&2
+    exit 1
+  fi
+
+  ENGINE_PACKAGE_ROOT_ARGS=()
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%%#*}"
+    line="${line#"${line%%[![:space:]]*}"}"
+    line="${line%"${line##*[![:space:]]}"}"
+    [ -n "$line" ] || continue
+
+    case "$line" in
+      fkst-packages:*) path="$fkst_packages/${line#fkst-packages:}" ;;
+      /*) path="$line" ;;
+      *) path="$ROOT/$line" ;;
+    esac
+    if [ ! -d "$path" ]; then
+      echo "error: conformance package root does not exist: $line -> $path" >&2
+      exit 1
+    fi
+    ENGINE_PACKAGE_ROOT_ARGS+=(--package-root "$path")
+  done < "$CONFORMANCE_PACKAGE_ROOTS"
+
+  if [ "${#ENGINE_PACKAGE_ROOT_ARGS[@]}" -eq 0 ]; then
+    echo "error: no package roots configured in $CONFORMANCE_PACKAGE_ROOTS" >&2
+    exit 1
+  fi
+}
 
 resolve_bin() {
   if [ -z "${BIN:-}" ] && [ -f "$ROOT/.env" ]; then
@@ -126,8 +224,18 @@ usage() {
 }
 
 cmd_check() {
-  python3 "$ROOT/scripts/check_repo.py"
-  python3 "$ROOT/scripts/check_repo_test.py"
+  local fkst_packages
+  fkst_packages="$(ensure_fkst_packages_checkout)"
+  if ! run_shared_source_ratchets "$fkst_packages"; then
+    echo "error: shared fkst-packages source ratchets failed" >&2
+    echo "  pin: $(read_fkst_packages_pin)" >&2
+    echo "  checkout: $fkst_packages" >&2
+    exit 1
+  fi
+  resolve_bin
+  ensure_fresh_bin
+  build_engine_package_root_args "$fkst_packages"
+  "$BIN" conformance --project-root "$ROOT" "${ENGINE_PACKAGE_ROOT_ARGS[@]}"
   python3 "$ROOT/scripts/probe_site_test.py"
 }
 
@@ -445,8 +553,8 @@ cmd_build() {
 
 case "${1:-}" in
   check) shift; cmd_check "$@" ;;
-  test) shift; cmd_check; resolve_bin; ensure_fresh_bin; cmd_test "$@" ;;
-  test-composed) shift; cmd_check; resolve_bin; ensure_fresh_bin; cmd_test_composed "$@" ;;
+  test) shift; resolve_bin; ensure_fresh_bin; cmd_test "$@" ;;
+  test-composed) shift; resolve_bin; ensure_fresh_bin; cmd_test_composed "$@" ;;
   run)  shift; resolve_bin; ensure_fresh_bin; cmd_run "$@" ;;
   supervise) shift; resolve_bin; ensure_fresh_bin; cmd_supervise "$@" ;;
   build) shift; cmd_build "$@" ;;

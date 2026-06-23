@@ -29,7 +29,7 @@ engine↔package 契约的权威是 fkst-substrate 的 `docs/package-repo-contra
   - 本仓 `.gitignore`：**track** `.fkst/local-packages/`、`.fkst/std/`、substrate source-pin、`.fkst/env.example`；**ignore** `.fkst/packages/`、`.fkst/run/`、`.fkst/env`。
   - 对比库 B（Lua 主）：`.fkst/local-packages` 在库 B 是 **ignore**（`-> ../packages` 的生成视图）；在本仓是 **track**（committed Lua 的家）。同一路径、相反 git 状态，皆因语言主属性——这是设计，明确写在此以免误删。
 - **跨仓组合（已有规则，重申）**：引用库 B 的包 = pin git ref + 额外 `--package-root`，只经 `pkg.queue` 限定名集成，**不跨 require**。
-- **迁移状态**：当前 `site-board` 仍在根 `packages/`（旧布局）；按本规则迁到 `.fkst/local-packages/site-board/`（连带 `scripts/run.sh` 的 `--package-root` 与 `.gitignore` 调整）是后续实现步骤，本节先把目标规则写明。
+- **当前状态**：`site-board` 已在 `.fkst/local-packages/site-board/`；`scripts/run.sh` 和 `.gitignore` 按本仓网站源码主布局处理。
 
 ## stdlib：库 B 的 std 私有 / 库 C 自定义 std
 
@@ -40,8 +40,9 @@ engine↔package 契约的权威是 fkst-substrate 的 `docs/package-repo-contra
 ## 构建 / 测试
 
 - `cp env.example .env` 填 `BIN=<fkst-substrate>/target/debug/fkst-framework`。
-- `scripts/run.sh test [pkg]` 单一入口（self-test + flat conformance + test + 组合 conformance）；`scripts/run.sh check` 静态守卫。
-- CI 从 `.fkst-substrate-ref` source-pin checkout 引擎并构建。
+- `scripts/run.sh test [pkg]` 单一入口（self-test + flat conformance + test + 组合 conformance）；`scripts/run.sh check` 调用 pinned fkst-packages shared source ratchets + `fkst-framework conformance`，本仓只提供 package roots 与 allowlists。
+- shared source ratchet pin 在 `.conformance/fkst-packages.ref`；hydrate 到 ignored `.conformance/fkst-packages/`。bump 时更新该 SHA，删掉 hydrated checkout，再跑 `scripts/run.sh check` 与 `scripts/run.sh test`。
+- CI 从 `.fkst-substrate-ref` source-pin checkout 引擎并构建，同时 hydrate `.conformance/fkst-packages.ref` 指向的 shared ratchet source。
 
 ## Git 提交/分支规范
 

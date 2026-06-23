@@ -24,17 +24,31 @@ This repo is **English-primary, zh-en bilingual**: source files are English; ext
 
 ## 包
 
-- `.fkst/local-packages/site-board/`（flat）：站点数据源 v0。cron 轮询 `FKST_GITHUB_REPO` 的 open issue/PR 板面，构建 `fkst-website.board.v1` 快照 JSON；`FKST_SITE_WRITE=1` 且设置 `FKST_SITE_PUBLISH_ROOT` 时原子发布 `board.json`（写 tmp + mv），否则 dry-run 只记日志。GitHub Pages deploy 后读取 `site/probe-manifest` 对发布站点做只读 live probe，只输出可 grep 的 `PROBE` ok/fail/skip 日志。
+- `.fkst/local-packages/site-board/`（composed）：站点数据源 v0。cron 轮询 `FKST_GITHUB_REPO` 的 open issue/PR 板面，构建 `fkst-website.board.v1` 快照 JSON；`FKST_SITE_WRITE=1` 且设置 `FKST_SITE_PUBLISH_ROOT` 时原子发布 `board.json`（写 tmp + mv），否则 dry-run 只记日志。GitHub Pages deploy 后读取 `site/probe-manifest` 对发布站点做只读 live probe，只输出可 grep 的 `PROBE` ok/fail/skip 日志。
 
 ## 构建 / 测试
 
 ```sh
 cp env.example .env   # 填 BIN=<fkst-substrate>/target/debug/fkst-framework
 scripts/run.sh test   # self-test + conformance + 全部包测试
-scripts/run.sh check  # 静态仓库守卫
+scripts/run.sh check  # pinned shared source ratchets + engine host conformance
 ```
 
-CI 从 `.fkst-substrate-ref`（git source-pin）checkout 引擎源码并构建 fkst-framework，再跑 `scripts/run.sh test`。
+CI 从 `.fkst-substrate-ref`（git source-pin）checkout 引擎源码并构建 fkst-framework，再跑 `scripts/run.sh check` 和 `scripts/run.sh test`。
+
+## Shared conformance
+
+This repo does not carry a local `scripts/check_repo.py` copy. Source ratchets
+come from a pinned `ChronoAIProject/fkst-packages` checkout:
+
+- Pin: `.conformance/fkst-packages.ref`
+- Host allowlists: `.conformance/check_repo.allowlists/`
+- Engine package roots: `.conformance/package-roots`
+- Hydrated checkout: `.conformance/fkst-packages/` (ignored)
+
+To bump the shared ratchets, update `.conformance/fkst-packages.ref` to the new
+fkst-packages commit SHA, remove `.conformance/fkst-packages/`, then run
+`scripts/run.sh check` and `scripts/run.sh test`.
 
 ## 约定
 

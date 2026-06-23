@@ -9,3 +9,7 @@ __pycache__/
 /.fkst/packages
 /.fkst/run/
 /.fkst/env
+
+# Hydrated shared conformance source. The pin/config files under .conformance/
+# are tracked; the checkout itself is recreated from .conformance/fkst-packages.ref.
+/.conformance/fkst-packages/

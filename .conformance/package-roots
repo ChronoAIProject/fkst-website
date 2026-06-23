@@ -1,0 +1,6 @@
+# Package roots for engine host conformance.
+#
+# Relative paths are resolved from the fkst-website repo root.
+# fkst-packages:<path> is resolved from the pinned shared fkst-packages checkout.
+.fkst/local-packages/site-board
+fkst-packages:packages/idle-detector

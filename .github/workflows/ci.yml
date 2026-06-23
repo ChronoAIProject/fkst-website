@@ -23,6 +23,16 @@ jobs:
       - name: Checkout fkst-website
         uses: actions/checkout@v4
 
+      - name: Hydrate pinned fkst-packages conformance source
+        shell: bash
+        run: |
+          set -euo pipefail
+          pin="$(head -n 1 .conformance/fkst-packages.ref | tr -d '[:space:]')"
+          test -n "$pin"
+          git clone --no-checkout https://github.com/ChronoAIProject/fkst-packages.git .conformance/fkst-packages
+          git -C .conformance/fkst-packages checkout "$pin"
+          echo "fkst-packages conformance pin: $pin"
+
       - name: Resolve fkst-substrate source pin
         id: substrate_ref
         shell: bash
@@ -68,4 +78,5 @@ jobs:
           BIN: ${{ github.workspace }}/fkst-substrate/target/debug/fkst-framework
         run: |
           test -x "$BIN"
+          scripts/run.sh check
           scripts/run.sh test
