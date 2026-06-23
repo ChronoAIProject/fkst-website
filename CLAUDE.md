@@ -41,8 +41,9 @@ engine↔package 契约的权威是 fkst-substrate 的 `docs/package-repo-contra
 
 - `cp env.example .env` 填 `BIN=<fkst-substrate>/target/debug/fkst-framework`。
 - `scripts/run.sh test [pkg]` 单一入口（self-test + flat conformance + test + 组合 conformance）；`scripts/run.sh check` 调用 pinned fkst-packages shared source ratchets + `fkst-framework conformance`，本仓只提供 package roots 与 allowlists。
-- shared source ratchet pin 在 `.conformance/fkst-packages.ref`；hydrate 到 ignored `.conformance/fkst-packages/`。bump 时更新该 SHA，删掉 hydrated checkout，再跑 `scripts/run.sh check` 与 `scripts/run.sh test`。
-- CI 从 `.fkst-substrate-ref` source-pin checkout 引擎并构建，同时 hydrate `.conformance/fkst-packages.ref` 指向的 shared ratchet source。
+- cross-repo version pins are top-level `.fkst-<dependency>-ref` files：`.fkst-substrate-ref`、`.fkst-packages-ref`；host conformance config lives under `.fkst/conformance/`（allowlists + package roots）；不设 separate per-repo dot-conformance dir，不复制 ratchet infrastructure。
+- shared source ratchet pin 在 `.fkst-packages-ref`；hydrate 到 ignored `.fkst/run/fkst-packages-conformance/`。bump 时更新该 SHA，删掉 hydrated checkout，再跑 `scripts/run.sh check` 与 `scripts/run.sh test`。
+- CI 从 `.fkst-substrate-ref` source-pin checkout 引擎并构建，同时 hydrate `.fkst-packages-ref` 指向的 shared ratchet source。
 
 ## Git 提交/分支规范
 

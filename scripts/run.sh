@@ -44,11 +44,11 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # under .fkst/local-packages/ (root stays website source). LOCAL_PKG is the
 # committed package home the engine loads from (no generated-symlink view).
 LOCAL_PKG="$ROOT/.fkst/local-packages"
-CONFORMANCE_DIR="$ROOT/.conformance"
-FKST_PACKAGES_PIN_FILE="$CONFORMANCE_DIR/fkst-packages.ref"
-FKST_PACKAGES_CHECKOUT="$CONFORMANCE_DIR/fkst-packages"
+CONFORMANCE_DIR="$ROOT/.fkst/conformance"
+FKST_PACKAGES_PIN_FILE="$ROOT/.fkst-packages-ref"
+FKST_PACKAGES_CHECKOUT="$ROOT/.fkst/run/fkst-packages-conformance"
 FKST_PACKAGES_REPO_URL="https://github.com/ChronoAIProject/fkst-packages.git"
-CHECK_REPO_ALLOWLIST_DIR="$CONFORMANCE_DIR/check_repo.allowlists"
+CHECK_REPO_ALLOWLIST_DIR="$CONFORMANCE_DIR/allowlists"
 CONFORMANCE_PACKAGE_ROOTS="$CONFORMANCE_DIR/package-roots"
 
 read_fkst_packages_pin() {
@@ -94,7 +94,7 @@ ensure_fkst_packages_checkout() {
     rm -rf "$FKST_PACKAGES_CHECKOUT"
   fi
 
-  mkdir -p "$CONFORMANCE_DIR"
+  mkdir -p "$(dirname "$FKST_PACKAGES_CHECKOUT")"
   git clone --quiet --no-checkout "$FKST_PACKAGES_REPO_URL" "$FKST_PACKAGES_CHECKOUT"
   git -C "$FKST_PACKAGES_CHECKOUT" checkout --quiet "$pin"
   printf '%s\n' "$FKST_PACKAGES_CHECKOUT"
@@ -105,7 +105,7 @@ run_shared_source_ratchets() {
   script="$fkst_packages/scripts/check_repo.py"
   if ! python3 "$script" --help 2>&1 | grep -q -- "--project-root"; then
     echo "error: pinned fkst-packages check_repo.py does not expose --project-root" >&2
-    echo "  bump .conformance/fkst-packages.ref to a Track P commit with the shared host-repo interface" >&2
+    echo "  bump .fkst-packages-ref to a Track P commit with the shared host-repo interface" >&2
     return 1
   fi
   PYTHONPATH="$fkst_packages/scripts${PYTHONPATH:+:$PYTHONPATH}" python3 - "$ROOT" <<'PY'

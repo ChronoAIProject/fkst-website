@@ -8,6 +8,6 @@ shared runner. Add entries only for existing repo-specific debt, and remove
 them as the underlying debt is fixed.
 
 The runner itself is not copied into this repo; `scripts/run.sh check` hydrates
-the pinned fkst-packages source recorded in `.conformance/fkst-packages.ref`.
+the pinned fkst-packages source recorded in `.fkst-packages-ref`.
 
 ⟦AI:FKST⟧
