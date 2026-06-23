@@ -55,6 +55,10 @@ local function publish_calls()
 end
 
 return {
+  test_persistence_class_is_stateless_adapter = function()
+    t.eq(core.persistence_class(), "stateless_adapter")
+  end,
+
   test_read_env_command_rejects_unknown_name = function()
     t.eq(core.read_env_command("FKST_GITHUB_REPO"), 'printf %s "$FKST_GITHUB_REPO"')
     local ok = pcall(core.read_env_command, "PATH")

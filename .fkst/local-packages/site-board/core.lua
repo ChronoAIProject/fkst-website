@@ -1,5 +1,9 @@
 local M = {}
 
+function M.persistence_class()
+  return "stateless_adapter"
+end
+
 -- Env access goes through exec_sync so tests can mock it and unmocked reads
 -- fail closed in test mode. Only allowlisted names are readable.
 local ENV_ALLOWLIST = {
