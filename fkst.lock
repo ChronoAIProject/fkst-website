@@ -13,3 +13,13 @@ tree_sha256 = "sha256-cff18aedbba54d01409fb59046aa21483d805eed7ddc8ace3afbb1723c
 name = "contract"
 unit = "libraries/contract"
 exports_sha256 = "sha256-b21e2b5e1b6ff0a0467b984efd64d70774ff87a0c9f20ea92efbf792a2724a59"
+
+[[external_source.libraries]]
+name = "workflow"
+unit = "libraries/workflow"
+exports_sha256 = "sha256-8074ebd11facb47764d41a369a3519b1d10241528e507625ea22a1023062fee9"
+
+[[external_source.libraries]]
+name = "testkit"
+unit = "libraries/testkit"
+exports_sha256 = "sha256-98e8039b05032cc845ade5d1d85401734c2fb5119adcb9e38137dfeee00c8859"
