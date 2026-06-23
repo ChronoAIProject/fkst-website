@@ -23,16 +23,23 @@ jobs:
       - name: Checkout fkst-website
         uses: actions/checkout@v4
 
+      - name: Set up Python (tomllib needs >=3.11; pin the runner's interpreter)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Hydrate pinned fkst-packages conformance source
         shell: bash
         run: |
           set -euo pipefail
-          pin="$(head -n 1 .fkst-packages-ref | tr -d '[:space:]')"
-          test -n "$pin"
+          pin="$(python3 scripts/check_single_platform_pin.py --print-rev)"
           mkdir -p .fkst/run
           git clone --no-checkout https://github.com/ChronoAIProject/fkst-packages.git .fkst/run/fkst-packages-conformance
           git -C .fkst/run/fkst-packages-conformance checkout "$pin"
           echo "fkst-packages conformance pin: $pin"
+
+      - name: Check single fkst-packages platform pin
+        run: python3 scripts/check_single_platform_pin.py
 
       - name: Resolve fkst-substrate source pin
         id: substrate_ref

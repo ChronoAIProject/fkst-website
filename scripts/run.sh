@@ -45,43 +45,18 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # committed package home the engine loads from (no generated-symlink view).
 LOCAL_PKG="$ROOT/.fkst/local-packages"
 CONFORMANCE_DIR="$ROOT/.fkst/conformance"
-FKST_PACKAGES_PIN_FILE="$ROOT/.fkst-packages-ref"
 FKST_PACKAGES_CHECKOUT="$ROOT/.fkst/run/fkst-packages-conformance"
 FKST_PACKAGES_REPO_URL="https://github.com/ChronoAIProject/fkst-packages.git"
 CHECK_REPO_ALLOWLIST_DIR="$CONFORMANCE_DIR/allowlists"
 CONFORMANCE_PACKAGE_ROOTS="$CONFORMANCE_DIR/package-roots"
 
 read_fkst_packages_pin() {
-  local pin
-  if [ ! -f "$FKST_PACKAGES_PIN_FILE" ]; then
-    echo "error: missing shared conformance pin: $FKST_PACKAGES_PIN_FILE" >&2
-    exit 1
-  fi
-  pin="$(head -n 1 "$FKST_PACKAGES_PIN_FILE" | tr -d '[:space:]')"
-  if ! [[ "$pin" =~ ^[0-9a-f]{40}$ ]]; then
-    echo "error: shared conformance pin must be a full git SHA: $FKST_PACKAGES_PIN_FILE" >&2
-    exit 1
-  fi
-  printf '%s\n' "$pin"
+  python3 "$ROOT/scripts/check_single_platform_pin.py" --project-root "$ROOT" --print-rev
 }
 
 ensure_fkst_packages_checkout() {
   local pin current
   pin="$(read_fkst_packages_pin)"
-
-  if [ -n "${FKST_PACKAGES_CONFORMANCE_ROOT:-}" ]; then
-    if [ -n "${CI:-}" ] || [ -n "${GITHUB_ACTIONS:-}" ]; then
-      echo "error: FKST_PACKAGES_CONFORMANCE_ROOT is local-only; CI must use $FKST_PACKAGES_PIN_FILE" >&2
-      exit 1
-    fi
-    if [ ! -f "$FKST_PACKAGES_CONFORMANCE_ROOT/scripts/check_repo.py" ]; then
-      echo "error: FKST_PACKAGES_CONFORMANCE_ROOT lacks scripts/check_repo.py: $FKST_PACKAGES_CONFORMANCE_ROOT" >&2
-      exit 1
-    fi
-    echo "warning: using local fkst-packages conformance root: $FKST_PACKAGES_CONFORMANCE_ROOT" >&2
-    printf '%s\n' "$FKST_PACKAGES_CONFORMANCE_ROOT"
-    return 0
-  fi
 
   if [ -d "$FKST_PACKAGES_CHECKOUT/.git" ]; then
     current="$(git -C "$FKST_PACKAGES_CHECKOUT" rev-parse HEAD 2>/dev/null || true)"
@@ -105,7 +80,7 @@ run_shared_source_ratchets() {
   script="$fkst_packages/scripts/check_repo.py"
   if ! python3 "$script" --help 2>&1 | grep -q -- "--project-root"; then
     echo "error: pinned fkst-packages check_repo.py does not expose --project-root" >&2
-    echo "  bump .fkst-packages-ref to a Track P commit with the shared host-repo interface" >&2
+    echo "  fkst.lock external_source(id=fkst-packages-platform).resolved.rev must expose the shared host-repo interface" >&2
     return 1
   fi
   PYTHONPATH="$fkst_packages/scripts${PYTHONPATH:+:$PYTHONPATH}" python3 - "$ROOT" <<'PY'
@@ -247,6 +222,7 @@ usage() {
 cmd_check() {
   local fkst_packages
   fkst_packages="$(ensure_fkst_packages_checkout)"
+  python3 "$ROOT/scripts/check_single_platform_pin.py" --project-root "$ROOT" --checkout "$fkst_packages"
   if ! run_shared_source_ratchets "$fkst_packages"; then
     echo "error: shared fkst-packages source ratchets failed" >&2
     echo "  pin: $(read_fkst_packages_pin)" >&2
