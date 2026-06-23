@@ -1,0 +1,8 @@
+# Existing fkst-website v0 direct gh reads. Keep this host-local baseline until
+# the site package consumes a named public forge adapter library.
+packages/site-board/core.lua:
+  - gh issue
+  - gh pr
+packages/site-board/departments/board_scan/main.lua:
+  - gh issue
+  - gh pr

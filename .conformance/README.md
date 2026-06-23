@@ -8,7 +8,8 @@ fkst-website invokes the shared source ratchets from
 - Allowlists: `.conformance/check_repo.allowlists/`
 
 To bump the shared ratchets, update `.conformance/fkst-packages.ref` to the
-new fkst-packages commit, remove `.conformance/fkst-packages/`, then run:
+new full fkst-packages commit SHA, verify that SHA exists on the intended
+upstream branch, remove `.conformance/fkst-packages/`, then run:
 
 ```sh
 scripts/run.sh check

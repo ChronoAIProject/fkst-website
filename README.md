@@ -47,8 +47,9 @@ come from a pinned `ChronoAIProject/fkst-packages` checkout:
 - Hydrated checkout: `.conformance/fkst-packages/` (ignored)
 
 To bump the shared ratchets, update `.conformance/fkst-packages.ref` to the new
-fkst-packages commit SHA, remove `.conformance/fkst-packages/`, then run
-`scripts/run.sh check` and `scripts/run.sh test`.
+full fkst-packages commit SHA, verify that SHA exists on the intended upstream
+branch, remove `.conformance/fkst-packages/`, then run `scripts/run.sh check`
+and `scripts/run.sh test`.
 
 ## 约定
 

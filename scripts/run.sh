@@ -103,11 +103,24 @@ ensure_fkst_packages_checkout() {
 run_shared_source_ratchets() {
   local fkst_packages="$1" script
   script="$fkst_packages/scripts/check_repo.py"
-  if ! grep -q -- "--project-root" "$script"; then
+  if ! python3 "$script" --help 2>&1 | grep -q -- "--project-root"; then
     echo "error: pinned fkst-packages check_repo.py does not expose --project-root" >&2
     echo "  bump .conformance/fkst-packages.ref to a Track P commit with the shared host-repo interface" >&2
     return 1
   fi
+  PYTHONPATH="$fkst_packages/scripts${PYTHONPATH:+:$PYTHONPATH}" python3 - "$ROOT" <<'PY'
+import sys
+from pathlib import Path
+
+import check_repo_config
+
+root = Path(sys.argv[1]).resolve()
+for package_root in check_repo_config.package_roots(root):
+    if not package_root.exists():
+        continue
+    for package in sorted(path for path in package_root.iterdir() if path.is_dir()):
+        print(f"shared source ratchets package: {package.name} ({package.relative_to(root)})")
+PY
   python3 "$script" --project-root "$ROOT" --allowlist-dir "$CHECK_REPO_ALLOWLIST_DIR"
 }
 
@@ -119,6 +132,7 @@ build_engine_package_root_args() {
   fi
 
   ENGINE_PACKAGE_ROOT_ARGS=()
+  ENGINE_CONFORMANCE_PROJECT_ROOT=""
   while IFS= read -r line || [ -n "$line" ]; do
     line="${line%%#*}"
     line="${line#"${line%%[![:space:]]*}"}"
@@ -134,11 +148,18 @@ build_engine_package_root_args() {
       echo "error: conformance package root does not exist: $line -> $path" >&2
       exit 1
     fi
+    if [ -z "$ENGINE_CONFORMANCE_PROJECT_ROOT" ]; then
+      ENGINE_CONFORMANCE_PROJECT_ROOT="$path"
+    fi
     ENGINE_PACKAGE_ROOT_ARGS+=(--package-root "$path")
   done < "$CONFORMANCE_PACKAGE_ROOTS"
 
   if [ "${#ENGINE_PACKAGE_ROOT_ARGS[@]}" -eq 0 ]; then
     echo "error: no package roots configured in $CONFORMANCE_PACKAGE_ROOTS" >&2
+    exit 1
+  fi
+  if [ -z "$ENGINE_CONFORMANCE_PROJECT_ROOT" ]; then
+    echo "error: no engine conformance project root resolved from $CONFORMANCE_PACKAGE_ROOTS" >&2
     exit 1
   fi
 }
@@ -235,7 +256,7 @@ cmd_check() {
   resolve_bin
   ensure_fresh_bin
   build_engine_package_root_args "$fkst_packages"
-  "$BIN" conformance --project-root "$ROOT" "${ENGINE_PACKAGE_ROOT_ARGS[@]}"
+  "$BIN" conformance --project-root "$ENGINE_CONFORMANCE_PROJECT_ROOT" "${ENGINE_PACKAGE_ROOT_ARGS[@]}"
   python3 "$ROOT/scripts/probe_site_test.py"
 }
 
