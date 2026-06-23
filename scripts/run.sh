@@ -2,8 +2,8 @@
 # Thin host bootstrapper for fkst-website.
 #
 # This repo owns only the host glue: hydrate the pinned fkst-packages checkout,
-# then delegate check/test/supervise orchestration to the shared public host
-# entrypoint.
+# keep website-owned checks local, then delegate shared fkst orchestration to
+# the public host entrypoint.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -49,9 +49,25 @@ usage() {
   cat <<'EOF'
 usage: scripts/run.sh <check|test|supervise> [args]
 
-Hydrates the pinned fkst-packages checkout, then execs:
+Hydrates the pinned fkst-packages checkout, runs website-local checks for
+`check`, then delegates shared orchestration to:
   <fkst-packages>/scripts/run.sh host --host-root <this repo> --local-packages <this repo>/.fkst/local-packages -- <command>
 EOF
+}
+
+shared_host_run() {
+  "$shared/scripts/run.sh" host \
+    --host-root "$ROOT" \
+    --local-packages "$LOCAL_PACKAGES" \
+    -- "$@"
+}
+
+cmd_check() {
+  # The shared host check preserves the old no-BIN path: source ratchets run
+  # before fkst-framework resolution. Keep website probe tests host-local.
+  shared_host_run check
+  echo "=== website probe_site_test.py ==="
+  python3 -B "$ROOT/scripts/probe_site_test.py"
 }
 
 case "${1:-}" in
@@ -64,7 +80,10 @@ pin="$(read_pin)"
 shared="$(ensure_fkst_packages_checkout "$pin")"
 [ -x "$shared/scripts/run.sh" ] || { echo "error: shared run.sh is not executable: $shared/scripts/run.sh" >&2; exit 1; }
 
-exec "$shared/scripts/run.sh" host \
-  --host-root "$ROOT" \
-  --local-packages "$LOCAL_PACKAGES" \
-  -- "$@"
+case "$1" in
+  check) shift; cmd_check "$@" ;;
+  test|supervise) exec "$shared/scripts/run.sh" host \
+    --host-root "$ROOT" \
+    --local-packages "$LOCAL_PACKAGES" \
+    -- "$@" ;;
+esac
