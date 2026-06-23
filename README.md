@@ -39,10 +39,12 @@ CI 从 `.fkst-substrate-ref`（git source-pin）checkout 引擎源码并构建 f
 ## Shared conformance
 
 This repo does not carry a local `scripts/check_repo.py` copy. Source ratchets
-come from a pinned `ChronoAIProject/fkst-packages` checkout:
+come from a `ChronoAIProject/fkst-packages` checkout pinned by
+`fkst.lock`:
 
-- Cross-repo version pins are top-level `.fkst-<dependency>-ref` files:
-  `.fkst-substrate-ref` and `.fkst-packages-ref`.
+- The fkst-substrate source pin remains `.fkst-substrate-ref`.
+- The fkst-packages platform pin is
+  `fkst.lock` `external_source(id=fkst-packages-platform).resolved.rev`.
 - Host conformance config lives under `.fkst/conformance/`.
 - Host allowlists: `.fkst/conformance/allowlists/`
 - Engine package roots: `.fkst/conformance/package-roots`
@@ -51,10 +53,12 @@ come from a pinned `ChronoAIProject/fkst-packages` checkout:
 There is no separate per-repo dot-conformance directory and no copied ratchet
 infrastructure in this repo.
 
-To bump the shared ratchets, update `.fkst-packages-ref` to the new
-full fkst-packages commit SHA, verify that SHA exists on the intended upstream
-branch, remove `.fkst/run/fkst-packages-conformance/`, then run `scripts/run.sh check`
-and `scripts/run.sh test`.
+To bump the shared ratchets, update `fkst.workspace.toml`
+`external_source(id=fkst-packages-platform).rev` to the new full
+fkst-packages commit SHA, verify that SHA exists on the intended upstream
+branch, regenerate `fkst.lock` with `fkst-framework deps lock`, remove
+`.fkst/run/fkst-packages-conformance/`, then run `scripts/run.sh check` and
+`scripts/run.sh test`.
 
 ## 约定
 

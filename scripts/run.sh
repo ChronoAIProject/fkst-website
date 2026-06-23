@@ -7,23 +7,48 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PIN_FILE="$ROOT/.fkst-packages-ref"
+LOCK_FILE="$ROOT/fkst.lock"
 CHECKOUT="$ROOT/.fkst/run/fkst-packages-conformance"
 REPO_URL="https://github.com/ChronoAIProject/fkst-packages.git"
 LOCAL_PACKAGES="$ROOT/.fkst/local-packages"
 
-read_pin() {
-  local pin
-  [ -f "$PIN_FILE" ] || { echo "error: missing fkst-packages pin: $PIN_FILE" >&2; exit 1; }
-  pin="$(sed -n '1p' "$PIN_FILE")"
-  pin="${pin%%#*}"
-  pin="${pin#"${pin%%[![:space:]]*}"}"
-  pin="${pin%"${pin##*[![:space:]]}"}"
-  if ! [[ "$pin" =~ ^[0-9a-f]{40}$ ]]; then
-    echo "error: fkst-packages pin must be a full git SHA: $PIN_FILE" >&2
-    exit 1
-  fi
-  printf '%s\n' "$pin"
+read_fkst_packages_pin_from_lock() {
+  python3 - "$LOCK_FILE" <<'PY'
+import re
+import sys
+import tomllib
+from pathlib import Path
+
+lock_path = Path(sys.argv[1])
+try:
+    data = tomllib.loads(lock_path.read_text(encoding="utf-8"))
+except FileNotFoundError:
+    print(f"error: missing fkst lockfile: {lock_path}", file=sys.stderr)
+    raise SystemExit(1)
+except tomllib.TOMLDecodeError as exc:
+    print(f"error: invalid fkst lockfile: {lock_path}: {exc}", file=sys.stderr)
+    raise SystemExit(1)
+
+sources = data.get("external_source", [])
+if isinstance(sources, dict):
+    sources = [sources]
+
+for source in sources:
+    if source.get("id") == "fkst-packages-platform":
+        rev = source.get("resolved", {}).get("rev")
+        if not isinstance(rev, str) or not re.fullmatch(r"[0-9a-f]{40}", rev):
+            print(
+                "error: fkst.lock external_source(id=fkst-packages-platform) "
+                "is missing resolved.rev as a full git SHA",
+                file=sys.stderr,
+            )
+            raise SystemExit(1)
+        print(rev)
+        raise SystemExit(0)
+
+print("error: fkst.lock is missing external_source(id=fkst-packages-platform)", file=sys.stderr)
+raise SystemExit(1)
+PY
 }
 
 ensure_fkst_packages_checkout() {
@@ -49,7 +74,7 @@ usage() {
   cat <<'EOF'
 usage: scripts/run.sh <check|test|supervise> [args]
 
-Hydrates the pinned fkst-packages checkout, runs website-local checks for
+Hydrates the fkst.lock-resolved fkst-packages checkout, runs website-local checks for
 `check`, then delegates shared orchestration to:
   <fkst-packages>/scripts/run.sh host --host-root <this repo> --local-packages <this repo>/.fkst/local-packages -- <command>
 EOF
@@ -65,6 +90,7 @@ shared_host_run() {
 cmd_check() {
   # The shared host check preserves the old no-BIN path: source ratchets run
   # before fkst-framework resolution. Keep website probe tests host-local.
+  python3 -B "$ROOT/scripts/check_single_platform_pin.py"
   shared_host_run check
   echo "=== website probe_site_test.py ==="
   python3 -B "$ROOT/scripts/probe_site_test.py"
@@ -76,7 +102,7 @@ case "${1:-}" in
   *) echo "unknown subcommand: $1" >&2; usage >&2; exit 2 ;;
 esac
 
-pin="$(read_pin)"
+pin="$(read_fkst_packages_pin_from_lock)"
 shared="$(ensure_fkst_packages_checkout "$pin")"
 [ -x "$shared/scripts/run.sh" ] || { echo "error: shared run.sh is not executable: $shared/scripts/run.sh" >&2; exit 1; }
 
