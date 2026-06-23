@@ -1,11 +1,11 @@
 [workspace]
-# fkst-website is a website-source-primary host repo: its OWN Lua packages are committed
-# under .fkst/local-packages/<pkg> (the repo root stays website source). The platform trio
-# (github-devloop/github-proxy/consensus) is EXTERNAL infra supplied via --package-root from
-# a pinned fkst-packages clone — the engine catalogs those explicit external roots from their
-# own source manifest, so this manifest declares only this repo's own units.
-units = [".fkst/local-packages/*", ".fkst/std"]
-packages = [".fkst/local-packages/*"]
+# fkst-website is a website-source-primary host repo: its OWN Lua packages are
+# committed under .fkst/local-packages/<pkg> (the repo root stays website
+# source). The shared host runner hydrates the pinned fkst-packages checkout
+# under .fkst/run/ before engine conformance, so cross-repo package roots named
+# in .fkst/conformance/package-roots must also be visible as workspace units.
+units = [".fkst/local-packages/*", ".fkst/std", ".fkst/run/fkst-packages-conformance/packages/idle-detector"]
+packages = [".fkst/local-packages/*", ".fkst/run/fkst-packages-conformance/packages/idle-detector"]
 libraries = [".fkst/std"]
 
 [registries]
@@ -18,4 +18,4 @@ workspace = "workspace"
 id = "fkst-packages-platform"
 git = "https://github.com/ChronoAIProject/fkst-packages.git"
 rev = "1734c42e489992285a9ab58168a9692ff74baee6"
-libraries = ["contract"]
+libraries = ["contract", "workflow", "testkit"]
