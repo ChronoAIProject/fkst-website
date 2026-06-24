@@ -3,23 +3,23 @@ id = "fkst-packages-platform"
 git = "https://github.com/ChronoAIProject/fkst-packages.git"
 
 [external_source.intent]
-rev = "fa0c8fa6b2f94d3f802743f0fcc0eaca88bea87e"
+rev = "78df54c7aea31fdcbb0753184882f0bbaf91199c"
 
 [external_source.resolved]
-rev = "fa0c8fa6b2f94d3f802743f0fcc0eaca88bea87e"
-tree_sha256 = "sha256-de32dc3fa75a6c35062e6dbf24a562da727bdc8e69f4f97f53bc06c4da9d06e7"
+rev = "78df54c7aea31fdcbb0753184882f0bbaf91199c"
+tree_sha256 = "sha256-0a8a915154dbec1cf1b406aacc0ff0194158876773479c44ffdb11c8fe6a9dfb"
 
 [[external_source.libraries]]
 name = "contract"
 unit = "libraries/contract"
-exports_sha256 = "sha256-44e6741f83acf7a6387b29fd324dd3517759a021eb8f85556a7223421fa3c5fc"
+exports_sha256 = "sha256-1795f634443d1566f29593dc88364467db1106076d65073eb8fade0617cdec6c"
 
 [[external_source.libraries]]
 name = "workflow"
 unit = "libraries/workflow"
-exports_sha256 = "sha256-a98aaf7a7bbc61f88c43acbd45eac86117a45c0458cd2bf9ef889ad1052dbe48"
+exports_sha256 = "sha256-5d7ab52aa1a2d9f348ff4bf077c3bfb2042916361939e34b7e0f600980dee2b0"
 
 [[external_source.libraries]]
 name = "testkit"
 unit = "libraries/testkit"
-exports_sha256 = "sha256-98e8039b05032cc845ade5d1d85401734c2fb5119adcb9e38137dfeee00c8859"
+exports_sha256 = "sha256-3f780d6457c2366841002bf9004763918d92dfc9c23dbeaba34af8b80fd1018f"
