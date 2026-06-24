@@ -1,11 +1,13 @@
 [workspace]
 # fkst-website is a website-source-primary host repo: its OWN Lua packages are
 # committed under .fkst/local-packages/<pkg> (the repo root stays website
-# source). The shared host runner hydrates the pinned fkst-packages checkout
-# under .fkst/run/ before engine conformance, so cross-repo package roots named
-# in .fkst/conformance/package-roots must also be visible as workspace units.
-units = [".fkst/local-packages/*", ".fkst/std", ".fkst/run/fkst-packages-conformance/packages/idle-detector"]
-packages = [".fkst/local-packages/*", ".fkst/run/fkst-packages-conformance/packages/idle-detector"]
+# source). Cross-repo conformance package roots are supplied via
+# .fkst/conformance/package-roots, resolved at conformance time from the pinned
+# fkst-packages checkout. The workspace catalog must not depend on generated
+# .fkst/run/ scratch; that broke supervise startup when the scratch checkout had
+# not been hydrated.
+units = [".fkst/local-packages/*", ".fkst/std"]
+packages = [".fkst/local-packages/*"]
 libraries = [".fkst/std"]
 
 [registries]
