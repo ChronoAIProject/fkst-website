@@ -17,5 +17,5 @@ workspace = "workspace"
 [[external_sources]]
 id = "fkst-packages-platform"
 git = "https://github.com/ChronoAIProject/fkst-packages.git"
-rev = "78df54c7aea31fdcbb0753184882f0bbaf91199c"
-libraries = ["contract", "workflow", "testkit"]
+rev = "e64a12705637dd62a297cf46cb8aa16bdb2e6bba"
+libraries = ["contract"]
