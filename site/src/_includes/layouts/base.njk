@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="{{ lang }}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ title }}</title>
+    <meta
+      name="description"
+      content="{{ description }}"
+    >
+    <link rel="stylesheet" href="{{ "/assets/css/style.css" | url }}">
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="{{ brandHref | url }}" aria-label="fkst home">fkst</a>
+      <nav class="top-nav" aria-label="Primary">
+        {% for item in nav %}
+          {% if item.current %}
+            <span aria-current="page">{{ item.label }}</span>
+          {% else %}
+            {% if item.external %}
+              <a href="{{ item.href }}">{{ item.label }}</a>
+            {% else %}
+              <a href="{{ item.href | url }}">{{ item.label }}</a>
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+      </nav>
+      <div class="language-switch" aria-label="Language">
+        {% for item in languageSwitch %}
+          {% if item.current %}
+            <span aria-current="page">{{ item.label }}</span>
+          {% else %}
+            <a href="{{ item.href | url }}">{{ item.label }}</a>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </header>
+
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="site-footer">
+      <p>{{ footerText }}</p>
+    </footer>
+  </body>
+</html>
