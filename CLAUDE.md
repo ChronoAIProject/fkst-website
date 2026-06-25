@@ -16,7 +16,7 @@ engine↔package 契约的权威是 fkst-substrate 的 `docs/package-repo-contra
 
 - **三档扩展模型**（见 README）：Tap 旁路 → Adapter 接线 → 静态 rebind（不存在，逢真需求向 fkst-substrate 提案）。**不做运行时拦截**；插入环节必须是一等显式 department。
 - **跨仓组合**：引用库 B 的包 = pin git ref + 额外 `--package-root`；包间不跨 require，只经 `pkg.queue` 限定名集成。
-- **写姿态**：站点发布的唯一姿态开关是 `FKST_SITE_WRITE`（unset = dry-run，`1` = 真写，真写要求 `FKST_SITE_PUBLISH_ROOT`，缺失 fail-closed）。
+- **站点数据输出**：`site-board` 只写 `FKST_SITE_OUT`（默认 `build/fkst/data`）下的 FKST data-layer artifacts，不写 hand-authored `site/`。
 - **payload 宪法**：大体量内容绝不整体序列化进可靠投递 payload；payload 只承载 `source_ref` 指针 + 小控制字段，consumer 回源 fetch。
 
 ## 目录结构：网站源码主仓（与 Lua 主仓 fkst-packages 有意不同）
