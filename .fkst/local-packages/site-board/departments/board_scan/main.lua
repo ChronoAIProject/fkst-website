@@ -41,39 +41,24 @@ function pipeline(event)
   local issues_raw = fetch_list(core.gh_issue_list_cmd(repo), "gh issue list")
   local prs_raw = fetch_list(core.gh_pr_list_cmd(repo), "gh pr list")
 
-  local board_json, build_err = core.build_board_json(repo, issues_raw, prs_raw, now())
+  local board_json, build_err = core.build_board_json(repo, issues_raw, prs_raw)
   if board_json == nil then
     error("board snapshot build failed: " .. tostring(build_err))
   end
+  local manifest_json = core.build_manifest_json(board_json)
+  local site_out = core.site_out_dir(core.read_env("FKST_SITE_OUT"))
 
-  local write_env = core.read_env("FKST_SITE_WRITE")
-  if write_env ~= "1" then
-    core.log_line("info", "board_scan", "OUTBOUND", {
-      "mode=dry-run",
-      "repo=" .. repo,
-      "bytes=" .. tostring(#board_json),
-      "reason=FKST_SITE_WRITE!=1",
-    })
-    return
-  end
-
-  -- Fail closed: real write posture without a publish root is a config error,
-  -- not a silent dry-run.
-  local publish_root = core.read_env("FKST_SITE_PUBLISH_ROOT")
-  if publish_root == nil then
-    error("FKST_SITE_WRITE=1 requires FKST_SITE_PUBLISH_ROOT")
-  end
-
-  local publish = exec_sync({ cmd = core.publish_cmd(publish_root, board_json), timeout = 30 })
-  if publish.exit_code ~= 0 then
-    error("board publish failed: " .. tostring(publish.stderr))
+  local write = exec_sync({ cmd = core.write_outputs_cmd(site_out, board_json, manifest_json), timeout = 30 })
+  if write.exit_code ~= 0 then
+    error("board data write failed: " .. tostring(write.stderr))
   end
 
   core.log_line("info", "board_scan", "OUTBOUND", {
-    "mode=real",
+    "mode=data",
     "repo=" .. repo,
     "bytes=" .. tostring(#board_json),
-    "path=" .. publish_root .. "/board.json",
+    "path=" .. site_out .. "/" .. core.BOARD_FILENAME,
+    "manifest=" .. site_out .. "/" .. core.MANIFEST_FILENAME,
   })
 end
 
