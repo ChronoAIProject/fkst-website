@@ -45,7 +45,15 @@ function pipeline(event)
   if board_json == nil then
     error("board snapshot build failed: " .. tostring(build_err))
   end
-  local manifest_json = core.build_manifest_json(board_json)
+  local hash = exec_sync({ cmd = core.sha256_hex_cmd(board_json), timeout = 30 })
+  if hash.exit_code ~= 0 then
+    error("board sha256 failed: " .. tostring(hash.stderr))
+  end
+  local board_sha256, hash_err = core.parse_sha256_hex_output(hash.stdout)
+  if board_sha256 == nil then
+    error("board sha256 failed: " .. tostring(hash_err))
+  end
+  local manifest_json = core.build_manifest_json(board_sha256)
   local site_out = core.site_out_dir(core.read_env("FKST_SITE_OUT"))
 
   local write = exec_sync({ cmd = core.write_outputs_cmd(site_out, board_json, manifest_json), timeout = 30 })

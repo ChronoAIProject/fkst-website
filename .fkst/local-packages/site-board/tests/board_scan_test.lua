@@ -23,6 +23,7 @@ local SHUFFLED_ISSUES_JSON = '[{"url":"https://github.example/owner/x/issues/1",
 local SHUFFLED_PRS_JSON = '[{"url":"https://github.example/owner/x/pull/2","updatedAt":"2026-06-10T02:03:04Z","labels":[],"state":"OPEN","title":"A PR","number":2}]\n'
 
 local EXPECTED_BOARD_JSON = '{"issues":[{"labels":[],"number":1,"state":"OPEN","title":"An issue","updatedAt":"2026-06-10T01:02:03Z","url":"https://github.example/owner/x/issues/1"}],"prs":[{"labels":[],"number":2,"state":"OPEN","title":"A PR","updatedAt":"2026-06-10T02:03:04Z","url":"https://github.example/owner/x/pull/2"}],"repo":"owner/x","schema_version":"fkst.site.board.v1"}'
+local EXPECTED_BOARD_SHA256 = "747228d459b0feb59ded0243c8150475c638ba037c3b2c86242f115a2ff6cccd"
 
 local function mock_repo_env(value)
   t.mock_command('printf %s "$FKST_GITHUB_REPO"', { stdout = value or "owner/x" })
@@ -35,6 +36,10 @@ end
 local function mock_lists(issues, prs)
   t.mock_command("gh issue list", { stdout = issues or ISSUES_JSON, exit_code = 0 })
   t.mock_command("gh pr list", { stdout = prs or PRS_JSON, exit_code = 0 })
+end
+
+local function mock_sha256(value)
+  t.mock_command("sha256sum", { stdout = (value or EXPECTED_BOARD_SHA256) .. "  -\n", exit_code = 0 })
 end
 
 local function run_scan(run_opts)
@@ -135,17 +140,30 @@ return {
   end,
 
   test_manifest_lists_generated_docs_with_sha256 = function()
-    local manifest = core.build_manifest_json(EXPECTED_BOARD_JSON)
+    local manifest = core.build_manifest_json(EXPECTED_BOARD_SHA256)
     local decoded = json.decode(manifest)
     t.eq(decoded.schema_version, "fkst.site.data.manifest.v1")
     t.eq(decoded.documents[1].path, "fkst.site.board.v1.json")
     t.eq(decoded.documents[1].schema_version, "fkst.site.board.v1")
-    t.eq(decoded.documents[1].sha256, core.sha256_hex(EXPECTED_BOARD_JSON))
+    t.eq(decoded.documents[1].sha256, EXPECTED_BOARD_SHA256)
     t.eq(#decoded.documents[1].sha256, 64)
   end,
 
+  test_sha256_uses_platform_command_and_parses_digest = function()
+    local cmd = core.sha256_hex_cmd("abc")
+    t.is_true(cmd:find("sha256sum", 1, true) ~= nil)
+    t.is_true(cmd:find("shasum -a 256", 1, true) ~= nil)
+    t.eq(
+      core.parse_sha256_hex_output("BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD  -\n"),
+      "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    )
+    local digest, err = core.parse_sha256_hex_output("not-a-digest\n")
+    t.eq(digest, nil)
+    t.is_true(err:find("digest", 1, true) ~= nil or err:find("64 hex", 1, true) ~= nil)
+  end,
+
   test_write_outputs_cmd_is_atomic_and_quoted = function()
-    local manifest = core.build_manifest_json(EXPECTED_BOARD_JSON)
+    local manifest = core.build_manifest_json(EXPECTED_BOARD_SHA256)
     local cmd = core.write_outputs_cmd("/srv/build/fkst/data", EXPECTED_BOARD_JSON, manifest)
     t.is_true(cmd:find("mkdir -p '/srv/build/fkst/data'", 1, true) ~= nil)
     t.is_true(cmd:find("fkst.site.board.v1.json.tmp", 1, true) ~= nil)
@@ -168,6 +186,7 @@ return {
     mock_repo_env()
     mock_lists()
     mock_site_out_env("")
+    mock_sha256()
     t.mock_command("mkdir -p", { stdout = "", exit_code = 0 })
     local result = run_scan(opts("default-data-out"))
     t.eq(result.exit_code, 0)
@@ -177,7 +196,7 @@ return {
     t.is_true(calls[1].rendered:find("mkdir -p 'build/fkst/data'", 1, true) ~= nil)
     t.is_true(calls[1].rendered:find("fkst.site.board.v1.json", 1, true) ~= nil)
     t.is_true(calls[1].rendered:find("manifest.json", 1, true) ~= nil)
-    t.is_true(calls[1].rendered:find(core.sha256_hex(EXPECTED_BOARD_JSON), 1, true) ~= nil)
+    t.is_true(calls[1].rendered:find(EXPECTED_BOARD_SHA256, 1, true) ~= nil)
     t.eq(calls[1].rendered:find("board.json", 1, true), nil)
   end,
 
@@ -192,6 +211,7 @@ return {
     mock_repo_env()
     mock_lists()
     mock_site_out_env("/tmp/site-data")
+    mock_sha256()
     t.mock_command("mkdir -p", { stdout = "", exit_code = 0 })
     local result = run_scan(opts("custom-site-out"))
     t.eq(result.exit_code, 0)
@@ -211,6 +231,7 @@ return {
     mock_repo_env()
     mock_lists()
     mock_site_out_env("site/generated")
+    mock_sha256()
     local result = run_scan(opts("bad-site-out"))
     t.is_true(result.exit_code ~= 0)
     t.eq(#publish_calls(), 0)
