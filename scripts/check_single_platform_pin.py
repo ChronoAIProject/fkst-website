@@ -12,7 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCK_FILE = ROOT / "fkst.lock"
-CHECKOUT = ROOT / ".fkst" / "run" / "fkst-packages-conformance"
+CHECKOUT = ROOT / ".fkst" / "run" / "fkst-packages-platform"
 SOURCE_ID = "fkst-packages-platform"
 EXCLUDED_REF_FILES = {".fkst-substrate-ref"}
 SHA_RE = re.compile(r"[0-9a-f]{40}")

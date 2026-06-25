@@ -4,11 +4,11 @@ __pycache__/
 
 # .fkst/ is the runtime interface dir, mixed tracked + ignored. This host repo
 # is website-source-primary, so its OWN Lua packages are committed under
-# .fkst/local-packages/ (and custom std under .fkst/std/) — those are TRACKED.
+# .fkst/local-packages/ (and custom libraries under .fkst/local-libraries/) — those are TRACKED.
 # Only the runtime parts are ignored:
 /.fkst/packages
 /.fkst/run/
 /.fkst/env
 
 # Shared conformance config is tracked under .fkst/conformance/. The hydrated
-# fkst-packages source checkout is recreated under ignored .fkst/run/.
+# fkst-packages platform source checkout is recreated under ignored .fkst/run/.

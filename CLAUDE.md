@@ -25,8 +25,8 @@ engine↔package 契约的权威是 fkst-substrate 的 `docs/package-repo-contra
 
 - **库 B（Lua 主）**：整个仓就是 Lua，committed Lua 源码放根 `packages/<pkg>/`；`scripts/run.sh` 生成 `.fkst/local-packages -> ../packages` 作为引擎加载的运行时视图（gitignore）。Lua 放根天经地义。
 - **本仓（网站源码主）**：仓库根是**网站源码**（`site/` 等），**Lua 包不放根**——本仓自有 Lua 包 committed 在 **`.fkst/local-packages/<pkg>/`**，让根保持纯网站源码、Lua 收进引擎运行时命名空间。引擎直接从 `.fkst/local-packages` 加载（committed home，无需生成步骤）。
-- **`.fkst/` 是运行时接口目录，本就 tracked + ignored 混合，不是「全 runtime-generated」**：每个 fkst 仓的 `.fkst/` 都**已 tracked** `.fkst/env.example` 与 substrate source-pin，只 **ignore** `.fkst/run/`、`.fkst/env`、外部引用包落点 `.fkst/packages/`。本仓（host）在这个既有事实上**additionally track** `.fkst/local-packages/`（本仓自有 Lua 包）+ `.fkst/std/`（本仓自定义 std，见下）。因为 `.fkst/` 从来就不是纯运行时，把 committed Lua 源码放进 `.fkst/` 与既有的 tracked 配置**完全一致、无任何代价**——只是语言主属性不同导致 tracked 集合不同。
-  - 本仓 `.gitignore`：**track** `.fkst/local-packages/`、`.fkst/std/`、substrate source-pin、`.fkst/env.example`；**ignore** `.fkst/packages/`、`.fkst/run/`、`.fkst/env`。
+- **`.fkst/` 是运行时接口目录，本就 tracked + ignored 混合，不是「全 runtime-generated」**：每个 fkst 仓的 `.fkst/` 都**已 tracked** `.fkst/env.example` 与 substrate source-pin，只 **ignore** `.fkst/run/`、`.fkst/env`、外部引用包落点 `.fkst/packages/`。本仓（host）在这个既有事实上**additionally track** `.fkst/local-packages/`（本仓自有 Lua 包）+ `.fkst/local-libraries/`（本仓自定义 libraries，见下）。因为 `.fkst/` 从来就不是纯运行时，把 committed Lua 源码放进 `.fkst/` 与既有的 tracked 配置**完全一致、无任何代价**——只是语言主属性不同导致 tracked 集合不同。
+  - 本仓 `.gitignore`：**track** `.fkst/local-packages/`、`.fkst/local-libraries/`、substrate source-pin、`.fkst/env.example`；**ignore** `.fkst/packages/`、`.fkst/run/`、`.fkst/env`。
   - 对比库 B（Lua 主）：`.fkst/local-packages` 在库 B 是 **ignore**（`-> ../packages` 的生成视图）；在本仓是 **track**（committed Lua 的家）。同一路径、相反 git 状态，皆因语言主属性——这是设计，明确写在此以免误删。
 - **跨仓组合（已有规则，重申）**：引用库 B 的包 = pin git ref + 额外 `--package-root`，只经 `pkg.queue` 限定名集成，**不跨 require**。
 - **当前状态**：`site-board` 已在 `.fkst/local-packages/site-board/`；`scripts/run.sh` 和 `.gitignore` 按本仓网站源码主布局处理。
@@ -34,7 +34,7 @@ engine↔package 契约的权威是 fkst-substrate 的 `docs/package-repo-contra
 ## stdlib：库 B 的 std 私有 / 库 C 自定义 std
 
 - **不引用库 B 的 std**：库 B 的 `std` 是**库 B 私有的仓内共享库**，**不是「全局 FKST stdlib」**。库 C 与库 B 只经 queue 集成、不跨 require，因此**不消费**库 B 的 std。仅当库 B **显式把某部分 std 提升为「命名的、带版本的 public 平台 API」**时，库 C 才经**显式 external-lib 机制**引用，且用 `platform_std` 之类**明确归属**的名字（不叫 `std`，不用跨 repo 相对 symlink「spelunking」）。
-- **库 C 自定义 std**：就是本仓自己的仓内共享库——`.fkst/std/<module>.lua`（committed）+ 每个需要的 C 包一条 per-package 相对 symlink `.fkst/local-packages/<pkg>/std -> ../../std`，`require("std.<module>")`。**零新机制**，与 Lua 主仓的 per-repo 模式相同，版本无关（随本仓走）。C 包可**同时**用「库 B 包（经 queue/package-root）」+「C-std（经 require）」——两个平面不冲突；但**不能**把 live B-std 与 live C-std 当成两个都叫 `std` 的可 require 根（一个 package root 只有一个 `std` 命名空间）。
+- **库 C 自定义 std**：就是本仓自己的仓内共享库——`.fkst/local-libraries/std/<module>.lua`（committed），由 `fkst.workspace.toml` 作为 library unit 暴露，C 包通过 `lib_deps = ["std"]` 和 `require("std.<module>")` 使用。C 包可**同时**用「库 B 包（经 queue/package-root）」+「C-std（经 require）」——两个平面不冲突；但**不能**把 live B-std 与 live C-std 当成两个都叫 `std` 的可 require 根（一个 package root 只有一个 `std` 命名空间）。
 - **何时才需要引擎 `--lib-root`**：仅当某个 C 包必须在**同一个包内**同时 require「命名的库 B 平台 std（已提升为 public）」**和**「C 自己的 std」——两个独立命名的共享根，不能都叫 `std`；且**必须先有库 B 主动把 std 提升为 public 平台库**。在那之前不触发（YAGNI）。
 
 ## 构建 / 测试
@@ -42,7 +42,7 @@ engine↔package 契约的权威是 fkst-substrate 的 `docs/package-repo-contra
 - `cp env.example .env` 填 `BIN=<fkst-substrate>/target/debug/fkst-framework`。
 - `scripts/run.sh test [pkg]` 单一入口（self-test + flat conformance + test + 组合 conformance）；`scripts/run.sh check` 调用 pinned fkst-packages shared source ratchets + `fkst-framework conformance`，本仓只提供 package roots 与 allowlists。
 - cross-repo version coordinates are single-source: `.fkst-substrate-ref` pins the engine source; `fkst.lock` `external_source(id=fkst-packages-platform).resolved.rev` pins fkst-packages for both shared ratchets and platform libraries. Do not reintroduce `.fkst-packages-ref` or any second fkst-packages top-level `*-ref` pin.
-- shared source ratchet source hydrates to ignored `.fkst/run/fkst-packages-conformance/` from the `fkst.lock` fkst-packages platform rev. To bump it, update `fkst.workspace.toml`, regenerate `fkst.lock` with `fkst-framework deps lock`, delete the hydrated checkout if needed, then run `scripts/run.sh check` and `scripts/run.sh test`.
+- shared source ratchet source hydrates to ignored `.fkst/run/fkst-packages-platform/` from the `fkst.lock` fkst-packages platform rev. To bump it, update `fkst.workspace.toml`, regenerate `fkst.lock` with `fkst-framework deps lock`, delete the hydrated checkout if needed, then run `scripts/run.sh check` and `scripts/run.sh test`.
 - CI 从 `.fkst-substrate-ref` source-pin checkout 引擎并构建，同时从 `fkst.lock` hydrate shared ratchet source。
 
 ## Git 提交/分支规范

@@ -8,7 +8,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOCK_FILE="$ROOT/fkst.lock"
-CHECKOUT="$ROOT/.fkst/run/fkst-packages-conformance"
+CHECKOUT="$ROOT/.fkst/run/fkst-packages-platform"
 REPO_URL="https://github.com/ChronoAIProject/fkst-packages.git"
 LOCAL_PACKAGES="$ROOT/.fkst/local-packages"
 
@@ -53,6 +53,14 @@ PY
 
 ensure_fkst_packages_checkout() {
   local pin="$1" current
+  if [ -n "${FKST_PACKAGES_RUNNER:-}" ]; then
+    [ -d "$FKST_PACKAGES_RUNNER" ] || {
+      echo "error: FKST_PACKAGES_RUNNER does not exist: $FKST_PACKAGES_RUNNER" >&2
+      return 1
+    }
+    printf '%s\n' "$FKST_PACKAGES_RUNNER"
+    return 0
+  fi
   if [ -d "$CHECKOUT/.git" ]; then
     current="$(git -C "$CHECKOUT" rev-parse HEAD 2>/dev/null || true)"
     if [ "$current" = "$pin" ]; then

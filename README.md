@@ -47,8 +47,8 @@ come from a `ChronoAIProject/fkst-packages` checkout pinned by
   `fkst.lock` `external_source(id=fkst-packages-platform).resolved.rev`.
 - Host conformance config lives under `.fkst/conformance/`.
 - Host allowlists: `.fkst/conformance/allowlists/`
-- Engine package roots: `.fkst/conformance/package-roots`
-- Hydrated checkout: `.fkst/run/fkst-packages-conformance/` (ignored)
+- Engine package roots: `.fkst/compose/package-roots`
+- Hydrated checkout: `.fkst/run/fkst-packages-platform/` (ignored)
 
 There is no separate per-repo dot-conformance directory and no copied ratchet
 infrastructure in this repo.
@@ -57,7 +57,7 @@ To bump the shared ratchets, update `fkst.workspace.toml`
 `external_source(id=fkst-packages-platform).rev` to the new full
 fkst-packages commit SHA, verify that SHA exists on the intended upstream
 branch, regenerate `fkst.lock` with `fkst-framework deps lock`, remove
-`.fkst/run/fkst-packages-conformance/`, then run `scripts/run.sh check` and
+`.fkst/run/fkst-packages-platform/`, then run `scripts/run.sh check` and
 `scripts/run.sh test`.
 
 ## 约定
