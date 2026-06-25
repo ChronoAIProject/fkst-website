@@ -5,19 +5,20 @@ fkst-website invokes the shared source ratchets from
 
 Convention:
 
-- Cross-repo version pins are top-level `.fkst-<dependency>-ref` files:
-  `.fkst-substrate-ref` and `.fkst-packages-ref`.
+- Cross-repo version pins are top-level source pins:
+  `.fkst-substrate-ref` for the engine and `fkst.lock`
+  `external_source(id=fkst-packages-platform).resolved.rev` for platform packages.
 - Host conformance config lives under `.fkst/conformance/`.
 - Allowlists live in `.fkst/conformance/allowlists/`.
-- Engine package roots live in `.fkst/conformance/package-roots`.
+- Engine package roots live in `.fkst/compose/package-roots`.
 - Hydrated shared ratchet source is recreated under
-  `.fkst/run/fkst-packages-conformance/` (ignored).
+  `.fkst/run/fkst-packages-platform/` (ignored).
 - There is no per-repo `.conformance/` directory and no copied ratchet
   infrastructure in this repo.
 
-To bump the shared ratchets, update `.fkst-packages-ref` to the
+To bump the shared ratchets, update `fkst.lock` `external_source(id=fkst-packages-platform).resolved.rev` to the
 new full fkst-packages commit SHA, verify that SHA exists on the intended
-upstream branch, remove `.fkst/run/fkst-packages-conformance/`, then run:
+upstream branch, remove `.fkst/run/fkst-packages-platform/`, then run:
 
 ```sh
 scripts/run.sh check
