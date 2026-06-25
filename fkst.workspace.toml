@@ -4,9 +4,9 @@
 # source). The shared host runner hydrates the pinned fkst-packages checkout
 # under .fkst/run/ before engine conformance, so cross-repo package roots named
 # in .fkst/compose/package-roots must also be visible as workspace units.
-units = [".fkst/local-packages/*", ".fkst/local-libraries/std", ".fkst/run/fkst-packages-platform/packages/idle-detector"]
+units = [".fkst/local-packages/*", ".fkst/local-libraries/text", ".fkst/run/fkst-packages-platform/packages/idle-detector"]
 packages = [".fkst/local-packages/*", ".fkst/run/fkst-packages-platform/packages/idle-detector"]
-libraries = [".fkst/local-libraries/std"]
+libraries = [".fkst/local-libraries/text"]
 
 [registries]
 workspace = "workspace"

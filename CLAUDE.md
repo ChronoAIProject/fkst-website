@@ -31,11 +31,11 @@ engine↔package 契约的权威是 fkst-substrate 的 `docs/package-repo-contra
 - **跨仓组合（已有规则，重申）**：引用库 B 的包 = pin git ref + 额外 `--package-root`，只经 `pkg.queue` 限定名集成，**不跨 require**。
 - **当前状态**：`site-board` 已在 `.fkst/local-packages/site-board/`；`scripts/run.sh` 和 `.gitignore` 按本仓网站源码主布局处理。
 
-## stdlib：库 B 的 std 私有 / 库 C 自定义 std
+## Host Libraries: capability names, not catch-all std
 
-- **不引用库 B 的 std**：库 B 的 `std` 是**库 B 私有的仓内共享库**，**不是「全局 FKST stdlib」**。库 C 与库 B 只经 queue 集成、不跨 require，因此**不消费**库 B 的 std。仅当库 B **显式把某部分 std 提升为「命名的、带版本的 public 平台 API」**时，库 C 才经**显式 external-lib 机制**引用，且用 `platform_std` 之类**明确归属**的名字（不叫 `std`，不用跨 repo 相对 symlink「spelunking」）。
-- **库 C 自定义 std**：就是本仓自己的仓内共享库——`.fkst/local-libraries/std/<module>.lua`（committed），由 `fkst.workspace.toml` 作为 library unit 暴露，C 包通过 `lib_deps = ["std"]` 和 `require("std.<module>")` 使用。C 包可**同时**用「库 B 包（经 queue/package-root）」+「C-std（经 require）」——两个平面不冲突；但**不能**把 live B-std 与 live C-std 当成两个都叫 `std` 的可 require 根（一个 package root 只有一个 `std` 命名空间）。
-- **何时才需要引擎 `--lib-root`**：仅当某个 C 包必须在**同一个包内**同时 require「命名的库 B 平台 std（已提升为 public）」**和**「C 自己的 std」——两个独立命名的共享根，不能都叫 `std`；且**必须先有库 B 主动把 std 提升为 public 平台库**。在那之前不触发（YAGNI）。
+- **fkst-packages (库 B) has no `std` library today**: its shared code is the responsibility-named set `contract` / `workflow` / `testkit` / `forge` / `devloop`. New shared capability belongs in a minimal, intent-named library, never in a revived catch-all `std`.
+- **fkst-website (库 C) also has no per-repo `std` convention**: ADR-0002 fixes where host-owned libraries live (`.fkst/local-libraries/`), not what they are named. Host libraries are named by content/capability; the current text helper library is `text`, consumed with `lib_deps = ["text"]` and `require("text.trim")`.
+- **The 库 B ↔ 库 C package boundary stays queue-only**: 库 C packages do not `require` 库 B packages or in-repo private source. A cross-repo library exists only when it is a named, versioned, `[library] publishable` unit exposed through `[[external_sources]]` (for example, `contract`). There is no `platform_std`.
 
 ## 构建 / 测试
 

@@ -6,10 +6,10 @@ persistence_class = "composed_judgment_pipeline"
 root = "."
 
 [lib_deps]
-# "std" = this repo's own workspace-internal library; "contract" = 库 B's
+# "text" = this repo's own workspace-internal text helper library; "contract" = 库 B's
 # published platform core consumed CROSS-REPO by git sha (see [[external_sources]]
 # in fkst.workspace.toml). Both resolve through the same per-unit lexical resolver.
-libraries = ["std", "contract"]
+libraries = ["text", "contract"]
 
 [event_deps]
 packages = ["idle-detector"]
