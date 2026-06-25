@@ -1,5 +1,5 @@
 kind = "library"
-name = "std"
+name = "text"
 
 [code]
 root = "."
@@ -8,12 +8,12 @@ root = "."
 libraries = []
 
 [library]
-name = "std"
-stable_id = "fkst.website.library.std"
+name = "text"
+stable_id = "fkst.website.library.text"
 version = "workspace"
 
 [exports]
-public = ["std.*"]
+public = ["text.*"]
 
 [visibility]
 public = true

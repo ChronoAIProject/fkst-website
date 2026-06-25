@@ -1,5 +1,5 @@
 local core = require("core")
-local text = require("std.text")
+local text = require("text.trim")
 -- Cross-repo: 库 B's published `contract` library, consumed by exact git sha
 -- via [[external_sources]] in fkst.workspace.toml (resolved sha in fkst.lock).
 local contract_strings = require("contract.strings")
@@ -20,7 +20,7 @@ local function fetch_list(cmd, context)
 end
 
 function pipeline(event)
-  -- Trigger trace: exercises the website's own std (std.text via lib_deps) and
+  -- Trigger trace: exercises the website's own text library (text.trim via lib_deps) and
   -- proves the cross-package event subscription to idle-detector.system_idle is
   -- delivered (event.queue is board_poll_tick or idle-detector.system_idle).
   core.log_line("info", "board_scan", "TRIGGER", {
