@@ -19,22 +19,27 @@ end
 
 local ISSUES_JSON = '[{"number":1,"title":"An issue","state":"OPEN","labels":[],"updatedAt":"2026-06-10T01:02:03Z","url":"https://github.example/owner/x/issues/1"}]\n'
 local PRS_JSON = '[{"number":2,"title":"A PR","state":"OPEN","labels":[],"updatedAt":"2026-06-10T02:03:04Z","url":"https://github.example/owner/x/pull/2"}]\n'
+local SHUFFLED_ISSUES_JSON = '[{"url":"https://github.example/owner/x/issues/1","updatedAt":"2026-06-10T01:02:03Z","labels":[],"state":"OPEN","title":"An issue","number":1}]\n'
+local SHUFFLED_PRS_JSON = '[{"url":"https://github.example/owner/x/pull/2","updatedAt":"2026-06-10T02:03:04Z","labels":[],"state":"OPEN","title":"A PR","number":2}]\n'
+
+local EXPECTED_BOARD_JSON = '{"issues":[{"labels":[],"number":1,"state":"OPEN","title":"An issue","updatedAt":"2026-06-10T01:02:03Z","url":"https://github.example/owner/x/issues/1"}],"prs":[{"labels":[],"number":2,"state":"OPEN","title":"A PR","updatedAt":"2026-06-10T02:03:04Z","url":"https://github.example/owner/x/pull/2"}],"repo":"owner/x","schema_version":"fkst.site.board.v1"}'
+local EXPECTED_BOARD_SHA256 = "747228d459b0feb59ded0243c8150475c638ba037c3b2c86242f115a2ff6cccd"
 
 local function mock_repo_env(value)
   t.mock_command('printf %s "$FKST_GITHUB_REPO"', { stdout = value or "owner/x" })
 end
 
-local function mock_write_env(value)
-  t.mock_command('printf %s "$FKST_SITE_WRITE"', { stdout = value or "" })
-end
-
-local function mock_publish_root_env(value)
-  t.mock_command('printf %s "$FKST_SITE_PUBLISH_ROOT"', { stdout = value or "" })
+local function mock_site_out_env(value)
+  t.mock_command('printf %s "$FKST_SITE_OUT"', { stdout = value or "" })
 end
 
 local function mock_lists(issues, prs)
   t.mock_command("gh issue list", { stdout = issues or ISSUES_JSON, exit_code = 0 })
   t.mock_command("gh pr list", { stdout = prs or PRS_JSON, exit_code = 0 })
+end
+
+local function mock_sha256(value)
+  t.mock_command("sha256sum", { stdout = (value or EXPECTED_BOARD_SHA256) .. "  -\n", exit_code = 0 })
 end
 
 local function run_scan(run_opts)
@@ -47,7 +52,8 @@ end
 local function publish_calls()
   local calls = {}
   for _, call in ipairs(t.command_calls()) do
-    if call.rendered:find("board.json", 1, true) ~= nil then
+    if call.rendered:find(core.BOARD_FILENAME, 1, true) ~= nil
+      or call.rendered:find(core.MANIFEST_FILENAME, 1, true) ~= nil then
       table.insert(calls, call)
     end
   end
@@ -61,7 +67,22 @@ return {
 
   test_read_env_command_rejects_unknown_name = function()
     t.eq(core.read_env_command("FKST_GITHUB_REPO"), 'printf %s "$FKST_GITHUB_REPO"')
+    t.eq(core.read_env_command("FKST_SITE_OUT"), 'printf %s "$FKST_SITE_OUT"')
     local ok = pcall(core.read_env_command, "PATH")
+    t.eq(ok, false)
+  end,
+
+  test_site_out_defaults_to_build_data_and_rejects_site_tree = function()
+    t.eq(core.site_out_dir(nil), "build/fkst/data")
+    t.eq(core.site_out_dir("build/fkst/data/"), "build/fkst/data")
+    t.eq(core.site_out_dir("./build/fkst/data"), "./build/fkst/data")
+    local ok = pcall(core.site_out_dir, "site")
+    t.eq(ok, false)
+    ok = pcall(core.site_out_dir, "site/generated")
+    t.eq(ok, false)
+    ok = pcall(core.site_out_dir, "/repo/site/generated")
+    t.eq(ok, false)
+    ok = pcall(core.site_out_dir, "/repo/site")
     t.eq(ok, false)
   end,
 
@@ -85,52 +106,98 @@ return {
     t.eq(ok, false)
   end,
 
-  test_build_board_json_embeds_validated_chunks = function()
-    local board = core.build_board_json("owner/x", ISSUES_JSON, PRS_JSON, 1781070000000)
+  test_build_board_json_is_canonical_and_deterministic = function()
+    local board = core.build_board_json("owner/x", ISSUES_JSON, PRS_JSON)
     t.is_true(board ~= nil)
+    t.eq(board, EXPECTED_BOARD_JSON)
+    local board_from_shuffled = core.build_board_json("owner/x", SHUFFLED_ISSUES_JSON, SHUFFLED_PRS_JSON)
+    t.eq(board_from_shuffled, board)
+    t.eq(board:find("generated_at", 1, true), nil)
+    t.eq(board:find(tostring(now()), 1, true), nil)
     local decoded = json.decode(board)
-    t.eq(decoded.schema, "fkst-website.board.v1")
+    t.eq(decoded.schema_version, "fkst.site.board.v1")
     t.eq(decoded.repo, "owner/x")
-    t.eq(decoded.generated_at_ms, 1781070000000)
     t.eq(decoded.issues[1].number, 1)
     t.eq(decoded.prs[1].number, 2)
   end,
 
   test_build_board_json_fails_closed_on_bad_input = function()
-    local board, err = core.build_board_json("owner/x", "not json", PRS_JSON, 0)
+    local board, err = core.build_board_json("owner/x", "not json", PRS_JSON)
     t.eq(board, nil)
     t.is_true(err:find("issues", 1, true) ~= nil)
-    board, err = core.build_board_json("owner/x", ISSUES_JSON, "{}", 0)
+    board, err = core.build_board_json("owner/x", ISSUES_JSON, "{}")
     t.eq(board, nil)
     t.is_true(err:find("prs", 1, true) ~= nil)
-    board, err = core.build_board_json("owner/x", ISSUES_JSON, '  {"message":"bad"}', 0)
+    board, err = core.build_board_json("owner/x", ISSUES_JSON, '  {"message":"bad"}')
     t.eq(board, nil)
     t.is_true(err:find("prs", 1, true) ~= nil)
-    board, err = core.build_board_json("owner/x", ISSUES_JSON, "  []\n", 0)
+    board, err = core.build_board_json("owner/x", ISSUES_JSON, "  []\n")
     t.is_true(board ~= nil)
-    board, err = core.build_board_json("owner/x", ISSUES_JSON, "", 0)
+    board, err = core.build_board_json("owner/x", ISSUES_JSON, "")
     t.eq(board, nil)
-    board, err = core.build_board_json("bad repo", ISSUES_JSON, PRS_JSON, 0)
+    board, err = core.build_board_json("bad repo", ISSUES_JSON, PRS_JSON)
     t.eq(board, nil)
   end,
 
-  test_publish_cmd_is_atomic_and_quoted = function()
-    local cmd = core.publish_cmd("/srv/site", '{"a":1}')
-    t.is_true(cmd:find("mkdir -p '/srv/site'", 1, true) ~= nil)
-    t.is_true(cmd:find("board.json.tmp", 1, true) ~= nil)
-    t.is_true(cmd:find("mv '/srv/site/board.json.tmp' '/srv/site/board.json'", 1, true) ~= nil)
-    local ok = pcall(core.publish_cmd, "relative/path", "{}")
+  test_manifest_lists_generated_docs_with_sha256 = function()
+    local manifest = core.build_manifest_json(EXPECTED_BOARD_SHA256)
+    local decoded = json.decode(manifest)
+    t.eq(decoded.schema_version, "fkst.site.data.manifest.v1")
+    t.eq(decoded.documents[1].path, "fkst.site.board.v1.json")
+    t.eq(decoded.documents[1].schema_version, "fkst.site.board.v1")
+    t.eq(decoded.documents[1].sha256, EXPECTED_BOARD_SHA256)
+    t.eq(#decoded.documents[1].sha256, 64)
+  end,
+
+  test_sha256_uses_platform_command_and_parses_digest = function()
+    local cmd = core.sha256_hex_cmd("abc")
+    t.is_true(cmd:find("sha256sum", 1, true) ~= nil)
+    t.is_true(cmd:find("shasum -a 256", 1, true) ~= nil)
+    t.eq(
+      core.parse_sha256_hex_output("BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD  -\n"),
+      "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    )
+    local digest, err = core.parse_sha256_hex_output("not-a-digest\n")
+    t.eq(digest, nil)
+    t.is_true(err:find("digest", 1, true) ~= nil or err:find("64 hex", 1, true) ~= nil)
+  end,
+
+  test_write_outputs_cmd_is_atomic_and_quoted = function()
+    local manifest = core.build_manifest_json(EXPECTED_BOARD_SHA256)
+    local cmd = core.write_outputs_cmd("/srv/build/fkst/data", EXPECTED_BOARD_JSON, manifest)
+    t.is_true(cmd:find("mkdir -p '/srv/build/fkst/data'", 1, true) ~= nil)
+    t.is_true(cmd:find("fkst.site.board.v1.json.tmp", 1, true) ~= nil)
+    t.is_true(cmd:find("manifest.json.tmp", 1, true) ~= nil)
+    t.is_true(
+      cmd:find(
+        "mv '/srv/build/fkst/data/fkst.site.board.v1.json.tmp' '/srv/build/fkst/data/fkst.site.board.v1.json'",
+        1,
+        true
+      ) ~= nil
+    )
+    t.is_true(
+      cmd:find("mv '/srv/build/fkst/data/manifest.json.tmp' '/srv/build/fkst/data/manifest.json'", 1, true) ~= nil
+    )
+    local ok = pcall(core.write_outputs_cmd, "site", EXPECTED_BOARD_JSON, manifest)
     t.eq(ok, false)
   end,
 
-  test_scan_dry_run_fetches_but_does_not_publish = function()
+  test_scan_writes_default_data_outputs = function()
     mock_repo_env()
     mock_lists()
-    mock_write_env("")
-    local result = run_scan(opts("dry-run"))
+    mock_site_out_env("")
+    mock_sha256()
+    t.mock_command("mkdir -p", { stdout = "", exit_code = 0 })
+    local result = run_scan(opts("default-data-out"))
     t.eq(result.exit_code, 0)
     t.eq(#result.raises, 0)
-    t.eq(#publish_calls(), 0)
+    local calls = publish_calls()
+    t.eq(#calls, 1)
+    t.is_true(calls[1].rendered:find("mkdir -p 'build/fkst/data'", 1, true) ~= nil)
+    t.is_true(calls[1].rendered:find("fkst.site.board.v1.json", 1, true) ~= nil)
+    t.is_true(calls[1].rendered:find("manifest.json", 1, true) ~= nil)
+    t.is_true(calls[1].rendered:find(EXPECTED_BOARD_SHA256, 1, true) ~= nil)
+    t.eq(calls[1].rendered:find("board.json", 1, true), nil)
   end,
 
   test_scan_skips_without_repo_env = function()
@@ -140,26 +207,32 @@ return {
     t.eq(#publish_calls(), 0)
   end,
 
-  test_scan_real_write_publishes_board_json = function()
+  test_scan_custom_site_out_writes_data_documents = function()
     mock_repo_env()
     mock_lists()
-    mock_write_env("1")
-    mock_publish_root_env("/tmp/site-pub")
+    mock_site_out_env("/tmp/site-data")
+    mock_sha256()
     t.mock_command("mkdir -p", { stdout = "", exit_code = 0 })
-    local result = run_scan(opts("real-write"))
+    local result = run_scan(opts("custom-site-out"))
     t.eq(result.exit_code, 0)
     local calls = publish_calls()
     t.eq(#calls, 1)
-    t.is_true(calls[1].rendered:find("fkst-website.board.v1", 1, true) ~= nil)
-    t.is_true(calls[1].rendered:find("mv '/tmp/site-pub/board.json.tmp' '/tmp/site-pub/board.json'", 1, true) ~= nil)
+    t.is_true(calls[1].rendered:find("fkst.site.board.v1", 1, true) ~= nil)
+    t.is_true(
+      calls[1].rendered:find(
+        "mv '/tmp/site-data/fkst.site.board.v1.json.tmp' '/tmp/site-data/fkst.site.board.v1.json'",
+        1,
+        true
+      ) ~= nil
+    )
   end,
 
-  test_scan_real_write_without_publish_root_fails_closed = function()
+  test_scan_rejects_site_out_inside_site_tree = function()
     mock_repo_env()
     mock_lists()
-    mock_write_env("1")
-    mock_publish_root_env("")
-    local result = run_scan(opts("no-publish-root"))
+    mock_site_out_env("site/generated")
+    mock_sha256()
+    local result = run_scan(opts("bad-site-out"))
     t.is_true(result.exit_code ~= 0)
     t.eq(#publish_calls(), 0)
   end,

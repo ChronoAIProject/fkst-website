@@ -24,7 +24,7 @@ This repo is **English-primary, zh-en bilingual**: source files are English; ext
 
 ## 包
 
-- `.fkst/local-packages/site-board/`（composed）：站点数据源 v0。cron 轮询 `FKST_GITHUB_REPO` 的 open issue/PR 板面，构建 `fkst-website.board.v1` 快照 JSON；`FKST_SITE_WRITE=1` 且设置 `FKST_SITE_PUBLISH_ROOT` 时原子发布 `board.json`（写 tmp + mv），否则 dry-run 只记日志。GitHub Pages deploy 后读取 `site/probe-manifest` 对发布站点做只读 live probe，只输出可 grep 的 `PROBE` ok/fail/skip 日志。
+- `.fkst/local-packages/site-board/`（composed）：站点数据源 v0。cron 轮询 `FKST_GITHUB_REPO` 的 open issue/PR 板面，构建 `fkst.site.board.v1` 快照 JSON；输出目录由 `FKST_SITE_OUT` 指定，默认 `build/fkst/data`，原子写入 `fkst.site.board.v1.json` 与 `manifest.json`（写 tmp + mv），不写入 `site/`。GitHub Pages deploy 后读取 `site/probe-manifest` 对发布站点做只读 live probe，只输出可 grep 的 `PROBE` ok/fail/skip 日志。
 
 ## 构建 / 测试
 
@@ -62,6 +62,6 @@ branch, regenerate `fkst.lock` with `fkst-framework deps lock`, remove
 
 ## 约定
 
-与 fkst-packages 一致：源文件内部英文、对外产物中文；事件 payload 只带 `source_ref` + 小控制字段（内容不入 payload，consumer 回源 fetch）；出站写默认 dry-run，真写姿态由 host 环境事实（`FKST_SITE_WRITE=1`）表达；集成/默认分支 `dev`，PR 合并用 squash。
+与 fkst-packages 一致：源文件内部英文、对外产物中文；事件 payload 只带 `source_ref` + 小控制字段（内容不入 payload，consumer 回源 fetch）；site-board 生成物只写入 `FKST_SITE_OUT`（默认 `build/fkst/data`），不写入 hand-authored `site/`；集成/默认分支 `dev`，PR 合并用 squash。
 
 ⟦AI:FKST⟧
