@@ -1,0 +1,53 @@
+---
+import BaseLayout from "./BaseLayout.astro";
+import {
+  defaultFooterText,
+  getAssetHref,
+  getBrandHref,
+  getHref,
+  getLanguageSwitch,
+  getNav,
+  homeLinkText,
+  resolveLang,
+} from "../site-config";
+
+const {
+  title,
+  description,
+  lang = "en",
+  pageKey,
+  eyebrow,
+  heading,
+  intro,
+  footerText,
+} = Astro.props.frontmatter;
+
+const locale = resolveLang(lang);
+const nav = getNav(locale, pageKey);
+const languageSwitch = getLanguageSwitch(locale, pageKey);
+const brandHref = getBrandHref(locale, pageKey);
+const cssHref = getAssetHref(locale, pageKey, "assets/css/style.css");
+const resolvedFooterText = footerText ??
+  `${defaultFooterText[locale]} <a href="${getHref(locale, pageKey, locale, "home")}">${homeLinkText[locale]}</a>`;
+---
+
+<BaseLayout
+  title={title}
+  description={description}
+  lang={lang}
+  brandHref={brandHref}
+  cssHref={cssHref}
+  nav={nav}
+  languageSwitch={languageSwitch}
+  footerText={resolvedFooterText}
+>
+  <section class="page-header" aria-labelledby="page-title">
+    <p class="eyebrow">{eyebrow}</p>
+    <h1 id="page-title">{heading}</h1>
+    <p class="page-intro">{intro}</p>
+  </section>
+
+  <div class="page-content markdown-content">
+    <slot />
+  </div>
+</BaseLayout>

@@ -1,0 +1,10 @@
+---
+import PageLayout from "../layouts/PageLayout.astro";
+import Content, { frontmatter } from "../content/en/about.md";
+
+export const routePattern = "/about.html";
+---
+
+<PageLayout frontmatter={frontmatter}>
+  <Content />
+</PageLayout>
