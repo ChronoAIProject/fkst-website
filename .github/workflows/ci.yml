@@ -36,6 +36,9 @@ jobs:
           npm ci
           npm run build
 
+      - name: Probe built site (pre-merge deploy gate)
+        run: bash scripts/probe_built_site.sh site/_site
+
       - name: Hydrate pinned fkst-packages platform source
         shell: bash
         run: |
