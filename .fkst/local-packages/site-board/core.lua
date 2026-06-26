@@ -107,6 +107,7 @@ end
 -- Board fields are display data for the site; the snapshot decodes the gh JSON
 -- arrays and re-encodes the supported fields in canonical order.
 local BOARD_FIELDS = "number,title,state,labels,updatedAt,url"
+local MERGED_PR_FIELDS = BOARD_FIELDS .. ",mergedAt"
 
 function M.gh_issue_list_cmd(repo)
   if not M.is_valid_repo(repo) then
@@ -126,6 +127,16 @@ function M.gh_pr_list_cmd(repo)
     .. M.shell_single_quote(repo)
     .. " --state open --limit 1000 --json "
     .. BOARD_FIELDS
+end
+
+function M.gh_merged_pr_list_cmd(repo)
+  if not M.is_valid_repo(repo) then
+    error("invalid repo: " .. tostring(repo))
+  end
+  return "gh pr list --repo "
+    .. M.shell_single_quote(repo)
+    .. " --state merged --limit 100 --json "
+    .. MERGED_PR_FIELDS
 end
 
 local function is_json_array(raw)
@@ -266,7 +277,7 @@ local function require_field(item, field, field_type, context)
   return value, nil
 end
 
-local function encode_board_item(item, context)
+local function encode_board_item(item, context, extra_fields)
   if type(item) ~= "table" then
     return nil, context .. " entry is not an object"
   end
@@ -298,7 +309,7 @@ local function encode_board_item(item, context)
   if err ~= nil then
     return nil, err
   end
-  return '{"labels":'
+  local encoded = '{"labels":'
     .. labels
     .. ',"number":'
     .. json_number(number)
@@ -310,13 +321,23 @@ local function encode_board_item(item, context)
     .. json_string(updated_at)
     .. ',"url":'
     .. json_string(url)
-    .. "}"
+  if extra_fields ~= nil then
+    for _, field in ipairs(extra_fields) do
+      local extra_value
+      extra_value, err = require_field(item, field, "string", context)
+      if err ~= nil then
+        return nil, err
+      end
+      encoded = encoded .. ',"' .. field .. '":' .. json_string(extra_value)
+    end
+  end
+  return encoded .. "}"
 end
 
-local function encode_board_list(items, context)
+local function encode_board_list(items, context, extra_fields)
   local parts = {}
   for index, item in ipairs(items) do
-    local encoded, err = encode_board_item(item, context .. " " .. tostring(index))
+    local encoded, err = encode_board_item(item, context .. " " .. tostring(index), extra_fields)
     if encoded == nil then
       return nil, err
     end
@@ -359,7 +380,7 @@ function M.parse_sha256_hex_output(stdout)
 end
 
 -- Build the FKST data-layer board document from validated GitHub JSON arrays.
-function M.build_board_json(repo, issues_raw, prs_raw)
+function M.build_board_json(repo, issues_raw, prs_raw, merged_prs_raw)
   if not M.is_valid_repo(repo) then
     return nil, "invalid repo"
   end
@@ -371,9 +392,17 @@ function M.build_board_json(repo, issues_raw, prs_raw)
   if not prs_ok then
     return nil, "prs payload is not a JSON array"
   end
+  local merged_prs_ok, merged_prs = is_json_array(merged_prs_raw)
+  if not merged_prs_ok then
+    return nil, "merged_prs payload is not a JSON array"
+  end
   local issues_json, issues_err = encode_board_list(issues, "issue")
   if issues_json == nil then
     return nil, issues_err
+  end
+  local merged_prs_json, merged_prs_err = encode_board_list(merged_prs, "merged_pr", { "mergedAt" })
+  if merged_prs_json == nil then
+    return nil, merged_prs_err
   end
   local prs_json, prs_err = encode_board_list(prs, "pr")
   if prs_json == nil then
@@ -381,6 +410,8 @@ function M.build_board_json(repo, issues_raw, prs_raw)
   end
   return '{"issues":'
     .. issues_json
+    .. ',"merged_prs":'
+    .. merged_prs_json
     .. ',"prs":'
     .. prs_json
     .. ',"repo":'

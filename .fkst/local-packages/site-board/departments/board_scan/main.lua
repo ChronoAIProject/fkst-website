@@ -40,8 +40,9 @@ function pipeline(event)
 
   local issues_raw = fetch_list(core.gh_issue_list_cmd(repo), "gh issue list")
   local prs_raw = fetch_list(core.gh_pr_list_cmd(repo), "gh pr list")
+  local merged_prs_raw = fetch_list(core.gh_merged_pr_list_cmd(repo), "gh merged pr list")
 
-  local board_json, build_err = core.build_board_json(repo, issues_raw, prs_raw)
+  local board_json, build_err = core.build_board_json(repo, issues_raw, prs_raw, merged_prs_raw)
   if board_json == nil then
     error("board snapshot build failed: " .. tostring(build_err))
   end
