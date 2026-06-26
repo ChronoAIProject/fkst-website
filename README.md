@@ -24,7 +24,7 @@ This repo is **English-primary, zh-en bilingual**: source files are English; ext
 
 ## 包
 
-- `.fkst/local-packages/site-board/` (composed): site data source v0. A cron poll reads `FKST_GITHUB_REPO` open issues, open PRs, and recent merged PRs, then builds the `fkst.site.board.v1` snapshot JSON. The output directory comes from `FKST_SITE_OUT`, defaults to `build/fkst/data`, and receives atomic `fkst.site.board.v1.json` and `manifest.json` writes through tmp-file rename. It never writes to hand-authored `site/`. After GitHub Pages deploy, the read-only live probe reads `site/probe-manifest` and only emits grep-friendly `PROBE` ok/fail/skip logs.
+- `.fkst/local-packages/site-board/` (composed): site data source v0. A cron poll reads `FKST_GITHUB_REPO` open issues and open PRs, then builds the `fkst.site.board.v1` snapshot JSON. The output directory comes from `FKST_SITE_OUT`, defaults to `build/fkst/data`, and receives atomic `fkst.site.board.v1.json` and `manifest.json` writes through tmp-file rename. It never writes to hand-authored `site/`. After GitHub Pages deploy, the read-only live probe reads `site/probe-manifest` and only emits grep-friendly `PROBE` ok/fail/skip logs.
 
 ## 构建 / 测试
 

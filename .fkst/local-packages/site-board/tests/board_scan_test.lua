@@ -19,13 +19,11 @@ end
 
 local ISSUES_JSON = '[{"number":1,"title":"An issue","state":"OPEN","labels":[],"updatedAt":"2026-06-10T01:02:03Z","url":"https://github.example/owner/x/issues/1"}]\n'
 local PRS_JSON = '[{"number":2,"title":"A PR","state":"OPEN","labels":[],"updatedAt":"2026-06-10T02:03:04Z","url":"https://github.example/owner/x/pull/2"}]\n'
-local MERGED_PRS_JSON = '[{"number":3,"title":"A merged PR","state":"MERGED","labels":[],"updatedAt":"2026-06-10T03:04:05Z","url":"https://github.example/owner/x/pull/3","mergedAt":"2026-06-10T03:30:00Z"}]\n'
 local SHUFFLED_ISSUES_JSON = '[{"url":"https://github.example/owner/x/issues/1","updatedAt":"2026-06-10T01:02:03Z","labels":[],"state":"OPEN","title":"An issue","number":1}]\n'
 local SHUFFLED_PRS_JSON = '[{"url":"https://github.example/owner/x/pull/2","updatedAt":"2026-06-10T02:03:04Z","labels":[],"state":"OPEN","title":"A PR","number":2}]\n'
-local SHUFFLED_MERGED_PRS_JSON = '[{"mergedAt":"2026-06-10T03:30:00Z","url":"https://github.example/owner/x/pull/3","updatedAt":"2026-06-10T03:04:05Z","labels":[],"state":"MERGED","title":"A merged PR","number":3}]\n'
 
-local EXPECTED_BOARD_JSON = '{"issues":[{"labels":[],"number":1,"state":"OPEN","title":"An issue","updatedAt":"2026-06-10T01:02:03Z","url":"https://github.example/owner/x/issues/1"}],"merged_prs":[{"labels":[],"number":3,"state":"MERGED","title":"A merged PR","updatedAt":"2026-06-10T03:04:05Z","url":"https://github.example/owner/x/pull/3","mergedAt":"2026-06-10T03:30:00Z"}],"prs":[{"labels":[],"number":2,"state":"OPEN","title":"A PR","updatedAt":"2026-06-10T02:03:04Z","url":"https://github.example/owner/x/pull/2"}],"repo":"owner/x","schema_version":"fkst.site.board.v1"}'
-local EXPECTED_BOARD_SHA256 = "07132c2b4cce55bc1b252a753e5fc500ae31a517de874ee3d4b9558627687f94"
+local EXPECTED_BOARD_JSON = '{"issues":[{"labels":[],"number":1,"state":"OPEN","title":"An issue","updatedAt":"2026-06-10T01:02:03Z","url":"https://github.example/owner/x/issues/1"}],"prs":[{"labels":[],"number":2,"state":"OPEN","title":"A PR","updatedAt":"2026-06-10T02:03:04Z","url":"https://github.example/owner/x/pull/2"}],"repo":"owner/x","schema_version":"fkst.site.board.v1"}'
+local EXPECTED_BOARD_SHA256 = "747228d459b0feb59ded0243c8150475c638ba037c3b2c86242f115a2ff6cccd"
 
 local function mock_repo_env(value)
   t.mock_command('printf %s "$FKST_GITHUB_REPO"', { stdout = value or "owner/x" })
@@ -35,10 +33,9 @@ local function mock_site_out_env(value)
   t.mock_command('printf %s "$FKST_SITE_OUT"', { stdout = value or "" })
 end
 
-local function mock_lists(issues, prs, merged_prs)
+local function mock_lists(issues, prs)
   t.mock_command("gh issue list", { stdout = issues or ISSUES_JSON, exit_code = 0 })
   t.mock_command("gh pr list --repo 'owner/x' --state open", { stdout = prs or PRS_JSON, exit_code = 0 })
-  t.mock_command("gh pr list --repo 'owner/x' --state merged", { stdout = merged_prs or MERGED_PRS_JSON, exit_code = 0 })
 end
 
 local function mock_sha256(value)
@@ -105,24 +102,15 @@ return {
       core.gh_pr_list_cmd("owner/x"),
       "gh pr list --repo 'owner/x' --state open --limit 1000 --json number,title,state,labels,updatedAt,url"
     )
-    t.eq(
-      core.gh_merged_pr_list_cmd("owner/x"),
-      "gh pr list --repo 'owner/x' --state merged --limit 100 --json number,title,state,labels,updatedAt,url,mergedAt"
-    )
     local ok = pcall(core.gh_issue_list_cmd, "bad repo name")
     t.eq(ok, false)
   end,
 
   test_build_board_json_is_canonical_and_deterministic = function()
-    local board = core.build_board_json("owner/x", ISSUES_JSON, PRS_JSON, MERGED_PRS_JSON)
+    local board = core.build_board_json("owner/x", ISSUES_JSON, PRS_JSON)
     t.is_true(board ~= nil)
     t.eq(board, EXPECTED_BOARD_JSON)
-    local board_from_shuffled = core.build_board_json(
-      "owner/x",
-      SHUFFLED_ISSUES_JSON,
-      SHUFFLED_PRS_JSON,
-      SHUFFLED_MERGED_PRS_JSON
-    )
+    local board_from_shuffled = core.build_board_json("owner/x", SHUFFLED_ISSUES_JSON, SHUFFLED_PRS_JSON)
     t.eq(board_from_shuffled, board)
     t.eq(board:find("generated_at", 1, true), nil)
     t.eq(board:find(tostring(now()), 1, true), nil)
@@ -131,31 +119,24 @@ return {
     t.eq(decoded.repo, "owner/x")
     t.eq(decoded.issues[1].number, 1)
     t.eq(decoded.prs[1].number, 2)
-    t.eq(decoded.merged_prs[1].number, 3)
-    t.eq(decoded.merged_prs[1].mergedAt, "2026-06-10T03:30:00Z")
+    t.eq(decoded.merged_prs, nil)
   end,
 
   test_build_board_json_fails_closed_on_bad_input = function()
-    local board, err = core.build_board_json("owner/x", "not json", PRS_JSON, MERGED_PRS_JSON)
+    local board, err = core.build_board_json("owner/x", "not json", PRS_JSON)
     t.eq(board, nil)
     t.is_true(err:find("issues", 1, true) ~= nil)
-    board, err = core.build_board_json("owner/x", ISSUES_JSON, "{}", MERGED_PRS_JSON)
+    board, err = core.build_board_json("owner/x", ISSUES_JSON, "{}")
     t.eq(board, nil)
     t.is_true(err:find("prs", 1, true) ~= nil)
-    board, err = core.build_board_json("owner/x", ISSUES_JSON, PRS_JSON, "{}")
-    t.eq(board, nil)
-    t.is_true(err:find("merged_prs", 1, true) ~= nil)
-    board, err = core.build_board_json("owner/x", ISSUES_JSON, '  {"message":"bad"}', MERGED_PRS_JSON)
+    board, err = core.build_board_json("owner/x", ISSUES_JSON, '  {"message":"bad"}')
     t.eq(board, nil)
     t.is_true(err:find("prs", 1, true) ~= nil)
-    board, err = core.build_board_json("owner/x", ISSUES_JSON, "  []\n", MERGED_PRS_JSON)
+    board, err = core.build_board_json("owner/x", ISSUES_JSON, "  []\n")
     t.is_true(board ~= nil)
-    board, err = core.build_board_json("owner/x", ISSUES_JSON, PRS_JSON, '[{"number":3,"title":"Bad","state":"MERGED","labels":[],"updatedAt":"2026-06-10T03:04:05Z","url":"https://github.example/owner/x/pull/3"}]')
-    t.eq(board, nil)
-    t.is_true(err:find("mergedAt", 1, true) ~= nil)
     board, err = core.build_board_json("owner/x", ISSUES_JSON, "")
     t.eq(board, nil)
-    board, err = core.build_board_json("bad repo", ISSUES_JSON, PRS_JSON, MERGED_PRS_JSON)
+    board, err = core.build_board_json("bad repo", ISSUES_JSON, PRS_JSON)
     t.eq(board, nil)
   end,
 
@@ -261,7 +242,6 @@ return {
     mock_repo_env()
     t.mock_command("gh issue list", { stdout = "", stderr = "boom", exit_code = 1 })
     t.mock_command("gh pr list --repo 'owner/x' --state open", { stdout = PRS_JSON, exit_code = 0 })
-    t.mock_command("gh pr list --repo 'owner/x' --state merged", { stdout = MERGED_PRS_JSON, exit_code = 0 })
     local result = run_scan(opts("gh-fails"))
     t.is_true(result.exit_code ~= 0)
     t.eq(#publish_calls(), 0)
