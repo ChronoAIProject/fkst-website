@@ -2,8 +2,8 @@
 .env
 __pycache__/
 build/
+site/.astro/
 site/_site/
-site/src/_generated/
 site/node_modules/
 
 # .fkst/ is the runtime interface dir, mixed tracked + ignored. This host repo

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Serve the BUILT _site/ locally and run the deployed-site probe against it.
+# Serve the built static site locally and run the deployed-site probe against it.
 # This is the deploy acceptance gate run against the exact artifact production
 # will publish: it is invoked pre-merge (ci.yml, on every PR) and pre-deploy
 # (pages.yml, before upload), so a build that drops a manifest page fails
@@ -12,7 +12,7 @@ SITE_DIR="${1:-${ROOT}/site/_site}"
 PORT="${FKST_SITE_PROBE_PORT:-8099}"
 
 if [ ! -d "$SITE_DIR" ]; then
-  echo "fkst-website dept=probe-built tag=fail reason=missing-_site dir=$SITE_DIR" >&2
+  echo "fkst-website dept=probe-built tag=fail reason=missing-site-dir dir=$SITE_DIR" >&2
   exit 1
 fi
 
@@ -21,7 +21,7 @@ server_pid=$!
 trap 'kill "$server_pid" 2>/dev/null || true' EXIT
 
 for _ in $(seq 1 20); do
-  if curl -fsS -o /dev/null "http://127.0.0.1:${PORT}/"; then
+  if curl -fsS -o /dev/null "http://127.0.0.1:${PORT}/" 2>/dev/null; then
     break
   fi
   sleep 0.3

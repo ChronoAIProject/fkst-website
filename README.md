@@ -1,6 +1,9 @@
 # fkst-website
 
-The third repo (library C) of the fkst ecosystem: a website-domain Lua package library running on the **fkst-substrate** engine. It builds on the packages of [fkst-packages](https://github.com/ChronoAIProject/fkst-packages) (library B) through composition and only carries the website-domain behavior layer.
+The public fkst website and the website-domain data packages that support it.
+The website itself is a normal Astro static-site project under `site/` with no
+fkst engine involvement in page generation. Website-domain Lua packages remain
+under `.fkst/local-packages/` only for data artifacts such as the board snapshot.
 
 This repo is **English-primary, zh-en bilingual**: source files are English; external artifacts (docs, issues, PRs) are English-first with Chinese as a secondary layer; the site itself is English-first with a Chinese version.
 
@@ -8,9 +11,31 @@ This repo is **English-primary, zh-en bilingual**: source files are English; ext
 
 官方网站：https://chronoaiproject.github.io/fkst-website/
 
+## Website build
+
+`site/` is an Astro project selected for static output, Markdown page authoring,
+documented i18n routing, and room for later data-driven pages through ordinary
+build-time inputs. Source pages live in `site/src/pages/`, shared layouts live in
+`site/src/layouts/`, and static assets live in `site/public/`.
+
+```sh
+cd site
+npm ci
+npm run build
+cd ..
+scripts/probe_built_site.sh site/_site
+```
+
+The build artifact is `site/_site/` so the existing GitHub Pages upload and
+`probe_site.sh` / `probe_built_site.sh` gates keep checking the deployed URL
+contract. The tracked `site/probe-manifest` is the list of pages that must stay
+servable.
+
 ## 仓定位与扩展模型
 
-本仓遵循与 fkst-packages 相同的 engine↔package 契约（权威：fkst-substrate 的 `docs/package-repo-contract.md`）。对库 B 包的复用按三档扩展力度，从低往高用，逢真需求才升级：
+The runtime package side of this repo follows the same engine↔package contract
+as fkst-packages (authority: fkst-substrate `docs/package-repo-contract.md`).
+对库 B 包的复用按三档扩展力度，从低往高用，逢真需求才升级：
 
 | 档位 | 机制 | 状态 |
 |---|---|---|
@@ -24,7 +49,7 @@ This repo is **English-primary, zh-en bilingual**: source files are English; ext
 
 ## 包
 
-- `.fkst/local-packages/site-board/` (composed): site data source v0. A cron poll reads `FKST_GITHUB_REPO` open issues and open PRs, then builds the `fkst.site.board.v1` snapshot JSON. The output directory comes from `FKST_SITE_OUT`, defaults to `build/fkst/data`, and receives atomic `fkst.site.board.v1.json` and `manifest.json` writes through tmp-file rename. It never writes to hand-authored `site/`. After GitHub Pages deploy, the read-only live probe reads `site/probe-manifest` and only emits grep-friendly `PROBE` ok/fail/skip logs.
+- `.fkst/local-packages/site-board/` (composed): site data source v0. A cron poll reads `FKST_GITHUB_REPO` open issues and open PRs, then builds the `fkst.site.board.v1` snapshot JSON. The output directory comes from `FKST_SITE_OUT`, defaults to `build/fkst/data`, and receives atomic `fkst.site.board.v1.json` and `manifest.json` writes through tmp-file rename. It never writes to hand-authored `site/`. Astro can later consume these artifacts as ordinary build-time data inputs.
 
 ## 构建 / 测试
 
@@ -62,6 +87,6 @@ branch, regenerate `fkst.lock` with `fkst-framework deps lock`, remove
 
 ## 约定
 
-与 fkst-packages 一致：源文件内部英文、对外产物中文；事件 payload 只带 `source_ref` + 小控制字段（内容不入 payload，consumer 回源 fetch）；site-board 生成物只写入 `FKST_SITE_OUT`（默认 `build/fkst/data`），不写入 hand-authored `site/`；集成/默认分支 `dev`，PR 合并用 squash。
+与 fkst-packages 一致：源文件内部英文、对外产物中文；事件 payload 只带 `source_ref` + 小控制字段（内容不入 payload，consumer 回源 fetch）；site-board 生成物只写入 `FKST_SITE_OUT`（默认 `build/fkst/data`），不写入 hand-authored `site/`；site page generation stays in Astro, not FKST engine departments；集成/默认分支 `dev`，PR 合并用 squash。
 
 ⟦AI:FKST⟧

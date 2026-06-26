@@ -1,0 +1,10 @@
+---
+import PageLayout from "../../layouts/PageLayout.astro";
+import Content, { frontmatter } from "../../content/zh/doctrine.md";
+
+export const routePattern = "/zh/doctrine.html";
+---
+
+<PageLayout frontmatter={frontmatter}>
+  <Content />
+</PageLayout>
