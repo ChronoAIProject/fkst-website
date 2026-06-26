@@ -36,6 +36,22 @@ jobs:
           npm ci
           npm run build
 
+      - name: Probe built site (pre-merge deploy gate)
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Serve the BUILT _site/ exactly as Pages would, and run the same
+          # probe used post-deploy — so a build that drops a manifest page
+          # (e.g. an Eleventy migration whose output is incomplete) fails CI
+          # BEFORE merge instead of only on the dev-push deploy.
+          python3 -m http.server 8099 --directory site/_site --bind 127.0.0.1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 20); do
+            curl -fsS -o /dev/null "http://127.0.0.1:8099/" && break || sleep 0.3
+          done
+          FKST_SITE_PROBE_BASE_URL="http://127.0.0.1:8099" scripts/probe_site.sh
+
       - name: Hydrate pinned fkst-packages platform source
         shell: bash
         run: |
