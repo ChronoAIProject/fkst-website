@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tomllib
 from pathlib import Path
+from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -46,6 +47,42 @@ def lock_rev() -> str:
     fail(f"missing external_source id={SOURCE_ID}")
 
 
+def workspace_manifest() -> dict[str, Any]:
+    manifest = ROOT / "fkst.workspace.toml"
+    try:
+        data = tomllib.loads(manifest.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        fail(f"missing workspace manifest path={manifest}")
+    except tomllib.TOMLDecodeError as exc:
+        fail(f"invalid workspace manifest path={manifest} error={exc}")
+    if not isinstance(data, dict):
+        fail(f"invalid workspace manifest shape path={manifest}")
+    return data
+
+
+def check_no_run_backed_workspace_units() -> None:
+    workspace = workspace_manifest().get("workspace")
+    if not isinstance(workspace, dict):
+        fail("workspace manifest is missing [workspace]")
+
+    offenders: list[str] = []
+    for key in ("units", "packages", "libraries"):
+        values = workspace.get(key, [])
+        if not isinstance(values, list):
+            fail(f"workspace.{key} must be a list")
+        for value in values:
+            if not isinstance(value, str):
+                fail(f"workspace.{key} contains non-string value={value!r}")
+            if value == ".fkst/run" or value.startswith(".fkst/run/"):
+                offenders.append(f"{key}:{value}")
+
+    if offenders:
+        fail(
+            "workspace manifest must not declare hydrated runtime paths "
+            f"offenders={','.join(offenders)}"
+        )
+
+
 def check_no_second_ref_pin(expected_rev: str) -> None:
     offenders: list[str] = []
     for path in ROOT.iterdir():
@@ -82,6 +119,7 @@ def checkout_head() -> str:
 
 def main() -> int:
     expected_rev = lock_rev()
+    check_no_run_backed_workspace_units()
     check_no_second_ref_pin(expected_rev)
 
     head = checkout_head()
