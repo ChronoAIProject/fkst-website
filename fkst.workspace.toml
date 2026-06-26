@@ -1,11 +1,11 @@
 [workspace]
 # fkst-website is a website-source-primary host repo: its OWN Lua packages are
 # committed under .fkst/local-packages/<pkg> (the repo root stays website
-# source). The shared host runner hydrates the pinned fkst-packages checkout
-# under .fkst/run/ before engine conformance, so cross-repo package roots named
-# in .fkst/compose/package-roots must also be visible as workspace units.
-units = [".fkst/local-packages/*", ".fkst/local-libraries/text", ".fkst/local-libraries/workflow", ".fkst/run/fkst-packages-platform/packages/idle-detector"]
-packages = [".fkst/local-packages/*", ".fkst/run/fkst-packages-platform/packages/idle-detector"]
+# source). Cross-repo package roots stay in .fkst/compose/package-roots via
+# fkst-packages:<path>, so this manifest remains valid before .fkst/run/ is
+# hydrated by scripts/run.sh.
+units = [".fkst/local-packages/*", ".fkst/local-libraries/text", ".fkst/local-libraries/workflow"]
+packages = [".fkst/local-packages/*"]
 libraries = [".fkst/local-libraries/text", ".fkst/local-libraries/workflow"]
 
 [registries]
