@@ -10,7 +10,7 @@ module.exports = function (eleventyConfig) {
     pathPrefix: "/fkst-website/",
     htmlTemplateEngine: "njk",
     markdownTemplateEngine: "njk",
-    templateFormats: ["njk"],
+    templateFormats: ["njk", "md"],
     dir: {
       input: "src",
       includes: "_includes",

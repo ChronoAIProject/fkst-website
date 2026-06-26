@@ -4,6 +4,7 @@ __pycache__/
 build/
 site/_site/
 site/src/_generated/
+site/src/_data/fkst/
 site/node_modules/
 
 # .fkst/ is the runtime interface dir, mixed tracked + ignored. This host repo

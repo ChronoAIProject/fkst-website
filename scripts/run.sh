@@ -80,11 +80,14 @@ ensure_fkst_packages_checkout() {
 
 usage() {
   cat <<'EOF'
-usage: scripts/run.sh <check|test|supervise> [args]
+usage: scripts/run.sh <check|test|generate|supervise> [args]
 
 Hydrates the fkst.lock-resolved fkst-packages checkout, runs website-local checks for
 `check`, then delegates shared orchestration to:
   <fkst-packages>/scripts/run.sh host --host-root <this repo> --local-packages <this repo>/.fkst/local-packages -- <command>
+
+`generate` is the host-owned `fkst generate` command: one engine run of the
+site-gen package that emits Eleventy source and data artifacts.
 EOF
 }
 
@@ -93,6 +96,38 @@ shared_host_run() {
     --host-root "$ROOT" \
     --local-packages "$LOCAL_PACKAGES" \
     -- "$@"
+}
+
+resolve_bin() {
+  # shellcheck source=/dev/null
+  source "$shared/scripts/bin_bootstrap.sh"
+  if ! resolve_bin_contract "$ROOT" "bootstrap"; then
+    echo "error: ${RESOLVE_BIN_ERROR:-failed to resolve fkst-framework BIN}" >&2
+    exit 1
+  fi
+  BIN="$RESOLVED_BIN"
+  export BIN
+}
+
+cmd_generate() {
+  resolve_bin
+  mkdir -p "$ROOT/.fkst/run"
+  export FKST_RUNTIME_ROOT="${FKST_RUNTIME_ROOT:-$ROOT/.fkst/run/generate-runtime}"
+  unset FKST_SUPERVISOR_PID
+  local args=("$BIN" run "$ROOT/.fkst/local-packages/site-gen/departments/generate/main.lua" --project-root "$ROOT")
+  local rootdir
+  for rootdir in "$LOCAL_PACKAGES"/*/; do
+    [ -d "$rootdir" ] || continue
+    args+=(--package-root "${rootdir%/}")
+  done
+  args+=(--owner-namespace site-gen --event '{"queue":"site_gen_generate","payload":{}}')
+  local out rc=0
+  set +e
+  out="$(cd "$ROOT" && "${args[@]}" 2>&1)"
+  rc=$?
+  set -e
+  printf '%s\n' "$out" | grep -vE '^RAISED:' || true
+  return "$rc"
 }
 
 cmd_check() {
@@ -105,7 +140,7 @@ cmd_check() {
 }
 
 case "${1:-}" in
-  check|test|supervise) ;;
+  check|test|generate|supervise) ;;
   -h|--help|help|"") usage; exit 0 ;;
   *) echo "unknown subcommand: $1" >&2; usage >&2; exit 2 ;;
 esac
@@ -116,6 +151,7 @@ shared="$(ensure_fkst_packages_checkout "$pin")"
 
 case "$1" in
   check) shift; cmd_check "$@" ;;
+  generate) shift; cmd_generate "$@" ;;
   test|supervise) exec "$shared/scripts/run.sh" host \
     --host-root "$ROOT" \
     --local-packages "$LOCAL_PACKAGES" \

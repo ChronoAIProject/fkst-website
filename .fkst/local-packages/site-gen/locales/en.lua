@@ -1,0 +1,16 @@
+return {
+  ["about.body.blank1"] = "",
+  ["about.body.blank2"] = "",
+  ["about.body.blank3"] = "",
+  ["about.body.boundary"] = "The website keeps hand-authored presentation code in Eleventy while FKST generates compact source artifacts for content that should stay synchronized across locales.",
+  ["about.body.heading"] = "# About FKST",
+  ["about.body.intro"] = "FKST is an autonomous company runtime built around explicit queues, package-owned departments, and deterministic delivery records.",
+  ["about.body.proof"] = "This generated page is the first proof of that boundary: Lua describes what the page is, and Eleventy decides how it renders.",
+  ["about.description"] = "A concise introduction to FKST, the autonomous company runtime.",
+  ["about.footer"] = "This page is generated from one FKST Lua source.",
+  ["about.title"] = "About FKST",
+  ["language.label"] = "EN",
+  ["nav.architecture"] = "Architecture",
+  ["nav.doctrine"] = "Doctrine",
+  ["nav.home"] = "Home",
+}

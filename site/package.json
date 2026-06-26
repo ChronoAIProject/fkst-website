@@ -3,7 +3,8 @@
   "private": true,
   "scripts": {
     "dev": "eleventy --serve",
-    "build": "eleventy"
+    "generate": "cd .. && scripts/run.sh generate",
+    "build": "npm run generate && eleventy"
   },
   "devDependencies": {
     "@11ty/eleventy": "3.1.6"

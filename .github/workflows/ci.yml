@@ -23,19 +23,6 @@ jobs:
       - name: Checkout fkst-website
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: site/package-lock.json
-
-      - name: Build Eleventy site
-        working-directory: site
-        run: |
-          npm ci
-          npm run build
-
       - name: Hydrate pinned fkst-packages platform source
         shell: bash
         run: |
@@ -87,6 +74,23 @@ jobs:
       - name: Build fkst-framework
         working-directory: fkst-substrate
         run: cargo build -p fkst-framework
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - name: Build Eleventy site
+        env:
+          BIN: ${{ github.workspace }}/fkst-substrate/target/debug/fkst-framework
+        working-directory: site
+        run: |
+          test -x "$BIN"
+          npm ci
+          npm run generate
+          npm run build
 
       - name: Run repository checks and package tests
         env:

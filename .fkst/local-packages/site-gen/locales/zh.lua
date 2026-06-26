@@ -1,0 +1,16 @@
+return {
+  ["about.body.blank1"] = "",
+  ["about.body.blank2"] = "",
+  ["about.body.blank3"] = "",
+  ["about.body.boundary"] = "网站把人工维护的呈现代码留在 Eleventy 中，同时由 FKST 生成需要跨语言保持同步的紧凑源码产物。",
+  ["about.body.heading"] = "# 关于 FKST",
+  ["about.body.intro"] = "FKST 是围绕显式队列、package 拥有的 department 和确定性投递记录构建的自主公司运行时。",
+  ["about.body.proof"] = "这个生成页面是该边界的第一个证明：Lua 描述页面是什么，Eleventy 决定页面如何渲染。",
+  ["about.description"] = "FKST 自主公司运行时的简要介绍。",
+  ["about.footer"] = "本页由同一个 FKST Lua 源生成。",
+  ["about.title"] = "关于 FKST",
+  ["language.label"] = "中文",
+  ["nav.architecture"] = "架构",
+  ["nav.doctrine"] = "信条",
+  ["nav.home"] = "首页",
+}
