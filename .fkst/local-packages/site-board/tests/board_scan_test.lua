@@ -19,6 +19,8 @@ end
 
 local ISSUES_JSON = '[{"number":1,"title":"An issue","state":"OPEN","labels":[],"updatedAt":"2026-06-10T01:02:03Z","url":"https://github.example/owner/x/issues/1"}]\n'
 local PRS_JSON = '[{"number":2,"title":"A PR","state":"OPEN","labels":[],"updatedAt":"2026-06-10T02:03:04Z","url":"https://github.example/owner/x/pull/2"}]\n'
+local STARVATION_ISSUES_JSON = '[{"number":53,"title":"Queue starvation: merge-ready head #47 has no recent merge","state":"OPEN","labels":[],"updatedAt":"2026-06-10T04:05:06Z","url":"https://github.example/owner/x/issues/53"}]\n'
+local STARVATION_ISSUE_BODY_JSON = '{"body":"Queue starvation watchdog fired from deterministic observability signals.\\n\\nQueue head: #47 site-build 2\\nQueue head PR: #2\\nQueue head age: 85 minutes\\nThreshold: 60 minutes\\n"}\n'
 local SHUFFLED_ISSUES_JSON = '[{"url":"https://github.example/owner/x/issues/1","updatedAt":"2026-06-10T01:02:03Z","labels":[],"state":"OPEN","title":"An issue","number":1}]\n'
 local SHUFFLED_PRS_JSON = '[{"url":"https://github.example/owner/x/pull/2","updatedAt":"2026-06-10T02:03:04Z","labels":[],"state":"OPEN","title":"A PR","number":2}]\n'
 
@@ -47,6 +49,44 @@ local function run_scan(run_opts)
     queue = "board_poll_tick",
     payload = {},
   }, run_opts)
+end
+
+local function capture_scan_logs(run_opts)
+  local captured = {}
+  local old_log = log
+  log = {
+    info = function(message)
+      table.insert(captured, tostring(message))
+    end,
+    warn = function(message)
+      table.insert(captured, tostring(message))
+    end,
+    error = function(message)
+      table.insert(captured, tostring(message))
+    end,
+  }
+
+  local ok, result = pcall(function()
+    local old_pipeline = pipeline
+    require("departments.board_scan.main")
+    local run = pipeline
+    pipeline = old_pipeline
+    if type(run) ~= "function" then
+      error("board_scan pipeline missing")
+    end
+    run({
+      queue = "board_poll_tick",
+      payload = {},
+    })
+    return { exit_code = 0, raises = {} }
+  end)
+
+  log = old_log
+  if not ok then
+    error(result)
+  end
+
+  return captured, result
 end
 
 local function publish_calls()
@@ -102,7 +142,13 @@ return {
       core.gh_pr_list_cmd("owner/x"),
       "gh pr list --repo 'owner/x' --state open --limit 1000 --json number,title,state,labels,updatedAt,url"
     )
+    t.eq(
+      core.gh_issue_body_cmd("owner/x", 53),
+      "gh issue view 53 --repo 'owner/x' --json body"
+    )
     local ok = pcall(core.gh_issue_list_cmd, "bad repo name")
+    t.eq(ok, false)
+    ok = pcall(core.gh_issue_body_cmd, "owner/x", "not-a-number")
     t.eq(ok, false)
   end,
 
@@ -138,6 +184,15 @@ return {
     t.eq(board, nil)
     board, err = core.build_board_json("bad repo", ISSUES_JSON, PRS_JSON)
     t.eq(board, nil)
+  end,
+
+  test_queue_starvation_diagnosis_uses_existing_open_pr_snapshot = function()
+    local numbers = core.queue_starvation_issue_numbers(STARVATION_ISSUES_JSON)
+    t.eq(#numbers, 1)
+    t.eq(numbers[1], 53)
+
+    local fields = core.queue_starvation_diagnostic_fields(53, STARVATION_ISSUE_BODY_JSON, PRS_JSON)
+    t.eq(table.concat(fields, " "), "issue=53 source=queue-starvation-watchdog head_issue=47 head_pr=2 diagnosis=head-pr-still-in-open-pr-snapshot action=diagnose-only")
   end,
 
   test_manifest_lists_generated_docs_with_sha256 = function()
@@ -199,6 +254,29 @@ return {
     t.is_true(calls[1].rendered:find("manifest.json", 1, true) ~= nil)
     t.is_true(calls[1].rendered:find(EXPECTED_BOARD_SHA256, 1, true) ~= nil)
     t.eq(calls[1].rendered:find("board.json", 1, true), nil)
+  end,
+
+  test_scan_logs_queue_starvation_diagnosis = function()
+    mock_repo_env()
+    mock_lists(STARVATION_ISSUES_JSON, PRS_JSON)
+    t.mock_command("gh issue view 53 --repo 'owner/x' --json body", { stdout = STARVATION_ISSUE_BODY_JSON, exit_code = 0 })
+    mock_site_out_env("")
+    mock_sha256()
+    t.mock_command("mkdir -p", { stdout = "", exit_code = 0 })
+    local logs, result = capture_scan_logs(opts("starvation-diagnosis"))
+    t.eq(result.exit_code, 0)
+    local found = false
+    for _, line in ipairs(logs) do
+      if line:find("tag=QUEUE_STARVATION_DIAGNOSIS", 1, true) ~= nil then
+        found = true
+        t.is_true(line:find("issue=53", 1, true) ~= nil)
+        t.is_true(line:find("head_issue=47", 1, true) ~= nil)
+        t.is_true(line:find("head_pr=2", 1, true) ~= nil)
+        t.is_true(line:find("diagnosis=head-pr-still-in-open-pr-snapshot", 1, true) ~= nil)
+        t.is_true(line:find("action=diagnose-only", 1, true) ~= nil)
+      end
+    end
+    t.eq(found, true)
   end,
 
   test_scan_skips_without_repo_env = function()
