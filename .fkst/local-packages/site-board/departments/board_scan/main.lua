@@ -19,6 +19,22 @@ local function fetch_list(cmd, context)
   return result.stdout
 end
 
+local function log_queue_starvation_diagnostics(repo, issues_raw, prs_raw)
+  local issue_numbers, issue_err = core.queue_starvation_issue_numbers(issues_raw)
+  if issue_numbers == nil then
+    error("queue starvation diagnosis failed: " .. tostring(issue_err))
+  end
+
+  for _, issue_number in ipairs(issue_numbers) do
+    local body_raw = fetch_list(core.gh_issue_body_cmd(repo, issue_number), "gh issue view")
+    local fields, fields_err = core.queue_starvation_diagnostic_fields(issue_number, body_raw, prs_raw)
+    if fields == nil then
+      error("queue starvation diagnosis failed: " .. tostring(fields_err))
+    end
+    core.log_line("warn", "board_scan", "QUEUE_STARVATION_DIAGNOSIS", fields)
+  end
+end
+
 function pipeline(event)
   -- Trigger trace: exercises the website's own text library (text.trim via lib_deps) and
   -- proves the cross-package event subscription to idle-detector.system_idle is
@@ -40,6 +56,7 @@ function pipeline(event)
 
   local issues_raw = fetch_list(core.gh_issue_list_cmd(repo), "gh issue list")
   local prs_raw = fetch_list(core.gh_pr_list_cmd(repo), "gh pr list")
+  log_queue_starvation_diagnostics(repo, issues_raw, prs_raw)
 
   local board_json, build_err = core.build_board_json(repo, issues_raw, prs_raw)
   if board_json == nil then

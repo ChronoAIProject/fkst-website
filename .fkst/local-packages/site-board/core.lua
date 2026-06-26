@@ -142,6 +142,124 @@ local function is_json_array(raw)
   return true, value
 end
 
+local function is_json_object(raw)
+  if type(raw) ~= "string" or raw == "" then
+    return false, nil
+  end
+  if raw:match("^%s*{") == nil then
+    return false, nil
+  end
+  local ok, value = pcall(json.decode, raw)
+  if not ok or type(value) ~= "table" then
+    return false, nil
+  end
+  return true, value
+end
+
+local function normalise_positive_integer(value)
+  local number = value
+  if type(value) == "string" and value:match("^%d+$") ~= nil then
+    number = tonumber(value)
+  end
+  if type(number) ~= "number"
+    or number ~= number
+    or number == math.huge
+    or number == -math.huge
+    or math.floor(number) ~= number
+    or number < 1 then
+    return nil
+  end
+  return number
+end
+
+function M.gh_issue_body_cmd(repo, issue_number)
+  if not M.is_valid_repo(repo) then
+    error("invalid repo: " .. tostring(repo))
+  end
+  local number = normalise_positive_integer(issue_number)
+  if number == nil then
+    error("invalid issue number: " .. tostring(issue_number))
+  end
+  return "gh issue view "
+    .. tostring(number)
+    .. " --repo "
+    .. M.shell_single_quote(repo)
+    .. " --json body"
+end
+
+function M.queue_starvation_issue_numbers(issues_raw)
+  local issues_ok, issues = is_json_array(issues_raw)
+  if not issues_ok then
+    return nil, "issues payload is not a JSON array"
+  end
+  local numbers = {}
+  for _, issue in ipairs(issues) do
+    if type(issue) == "table"
+      and issue.state == "OPEN"
+      and type(issue.title) == "string"
+      and issue.title:match("^Queue starvation:") ~= nil then
+      local number = normalise_positive_integer(issue.number)
+      if number == nil then
+        return nil, "queue starvation issue number is invalid"
+      end
+      table.insert(numbers, number)
+    end
+  end
+  table.sort(numbers)
+  return numbers, nil
+end
+
+function M.queue_starvation_diagnostic_fields(issue_number, issue_body_raw, prs_raw)
+  local issue = normalise_positive_integer(issue_number)
+  if issue == nil then
+    return nil, "invalid queue starvation issue number"
+  end
+  local body_ok, body_view = is_json_object(issue_body_raw)
+  if not body_ok or type(body_view.body) ~= "string" then
+    return nil, "queue starvation issue body is not available"
+  end
+  local prs_ok, prs = is_json_array(prs_raw)
+  if not prs_ok then
+    return nil, "prs payload is not a JSON array"
+  end
+
+  local head_issue = normalise_positive_integer(body_view.body:match("Queue head:%s*#(%d+)"))
+  local head_pr = normalise_positive_integer(body_view.body:match("Queue head PR:%s*#(%d+)"))
+  if head_pr == nil then
+    return {
+      "issue=" .. tostring(issue),
+      "source=queue-starvation-watchdog",
+      "diagnosis=missing-head-pr",
+      "action=diagnose-only",
+    }, nil
+  end
+
+  local head_pr_is_open = false
+  for _, pr in ipairs(prs) do
+    if type(pr) == "table" and normalise_positive_integer(pr.number) == head_pr then
+      head_pr_is_open = true
+      break
+    end
+  end
+
+  local diagnosis = "head-pr-not-in-open-pr-snapshot"
+  if head_pr_is_open then
+    diagnosis = "head-pr-still-in-open-pr-snapshot"
+  end
+
+  local fields = {
+    "issue=" .. tostring(issue),
+    "source=queue-starvation-watchdog",
+    "head_pr=" .. tostring(head_pr),
+    "diagnosis=" .. diagnosis,
+    "action=diagnose-only",
+  }
+  if head_issue ~= nil then
+    table.insert(fields, 3, "head_issue=" .. tostring(head_issue))
+  end
+  return fields, nil
+end
+
 local function json_string(value)
   if type(value) ~= "string" then
     error("json_string requires a string")
