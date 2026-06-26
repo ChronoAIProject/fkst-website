@@ -120,7 +120,7 @@ cmd_generate() {
     [ -d "$rootdir" ] || continue
     args+=(--package-root "${rootdir%/}")
   done
-  args+=(--owner-namespace site-gen --event '{"queue":"site_gen_generate","payload":{}}')
+  args+=(--owner-namespace site-gen --event '{"payload":{}}')
   local out rc=0
   set +e
   out="$(cd "$ROOT" && "${args[@]}" 2>&1)"

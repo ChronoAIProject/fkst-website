@@ -1,18 +1,12 @@
 local core = require("core")
 local site = require("site")
-local saga = require("workflow.saga")
 
 local spec = {
-  consumes = { "site_gen_generate" },
-  ephemeral = { "site_gen_generate" },
-  stall_window = "30s",
+  consumes = {},
+  produces = {},
 }
 
-local function done(_event)
-  return false
-end
-
-local function act(_event)
+local function pipeline(_event)
   local artifact_set = core.build_artifact_set(site)
   local config = core.default_output_config()
   local mkdir = exec_sync({ cmd = core.mkdir_outputs_cmd(config, artifact_set), timeout = 30 })
@@ -33,8 +27,7 @@ local function act(_event)
   )
 end
 
-return saga.department(spec, {
-  done = done,
-  act = act,
-  name = "generate",
-})
+return {
+  spec = spec,
+  pipeline = pipeline,
+}

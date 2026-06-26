@@ -97,7 +97,6 @@ end
 
 local function run_generate(run_opts)
   return t.run_department("departments/generate/main.lua", {
-    queue = "site-gen.site_gen_generate",
     payload = {},
   }, run_opts)
 end
@@ -192,21 +191,4 @@ return {
     t.is_true(calls[5].rendered:find("site/src/_data/fkst/manifest.json", 1, true) ~= nil)
   end,
 
-  test_fire_raiser_generate_routes_to_generator = function()
-    t.mock_command("mkdir -p", { stdout = "", exit_code = 0 })
-    t.mock_command("mv 'site/src/_data/fkst/routes.json.tmp'", { stdout = "", exit_code = 0 })
-    t.mock_command("mv 'site/src/_generated/about/index.md.tmp'", { stdout = "", exit_code = 0 })
-    t.mock_command("mv 'site/src/_generated/zh/about/index.md.tmp'", { stdout = "", exit_code = 0 })
-    t.mock_command("mv 'site/src/_data/fkst/manifest.json.tmp'", { stdout = "", exit_code = 0 })
-
-    local trace = t.fire_raiser("generate")
-    t.eq(trace.source_ref.kind, "cron")
-    t.eq(trace.source_payload.raiser, "site-gen.generate")
-    t.eq(trace.routed_to[1], "site-gen.generate")
-    if trace.consumer_result.status ~= "accepted" then
-      error(trace.consumer_result.message or "fire_raiser consumer failed")
-    end
-    t.eq(trace.consumer_result.status, "accepted")
-    t.eq(#trace.raised, 0)
-  end,
 }
