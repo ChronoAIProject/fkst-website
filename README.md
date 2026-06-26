@@ -25,6 +25,27 @@ This repo is **English-primary, zh-en bilingual**: source files are English; ext
 ## 包
 
 - `.fkst/local-packages/site-board/`（composed）：站点数据源 v0。cron 轮询 `FKST_GITHUB_REPO` 的 open issue/PR 板面，构建 `fkst.site.board.v1` 快照 JSON；输出目录由 `FKST_SITE_OUT` 指定，默认 `build/fkst/data`，原子写入 `fkst.site.board.v1.json` 与 `manifest.json`（写 tmp + mv），不写入 `site/`。GitHub Pages deploy 后读取 `site/probe-manifest` 对发布站点做只读 live probe，只输出可 grep 的 `PROBE` ok/fail/skip 日志。
+- `.fkst/local-packages/site-gen/`（stateless adapter）：build-time `fkst generate`
+  primitive. It runs once from `scripts/run.sh generate`, emits only Eleventy
+  Markdown source under `site/src/_generated/` and FKST data under
+  `site/src/_data/fkst/`, and has no scheduler, raiser, or runtime supervise
+  trigger.
+
+### Why `site-gen` is necessary here
+
+Established static-site practice is to use native SSG primitives first:
+Eleventy Markdown, front matter, layouts, and `_data` remain the rendering
+surface for this repo. `site-gen` is justified only because this increment is
+not asking Eleventy to prove it can render an `about` page; it is proving the
+FKST package contract for generated site source.
+
+Plain Eleventy files can render `/about/`, `/zh/about/`, and route data, but
+they cannot exercise the required FKST boundary: a single Lua source loaded as
+an FKST package, invoked by one explicit `fkst generate` command, constrained to
+bounded output roots, and producing canonical schema-versioned artifacts with
+stable manifest hashes. The generated files are intentionally boring Eleventy
+inputs, so Eleventy still owns presentation while FKST owns only the
+deterministic source-generation contract.
 
 ## 构建 / 测试
 

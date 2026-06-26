@@ -4,9 +4,9 @@
 # source). Cross-repo package roots stay in .fkst/compose/package-roots via
 # fkst-packages:<path>, so this manifest remains valid before .fkst/run/ is
 # hydrated by scripts/run.sh.
-units = [".fkst/local-packages/*", ".fkst/local-libraries/text", ".fkst/local-libraries/workflow"]
+units = [".fkst/local-packages/*", ".fkst/local-libraries/text"]
 packages = [".fkst/local-packages/*"]
-libraries = [".fkst/local-libraries/text", ".fkst/local-libraries/workflow"]
+libraries = [".fkst/local-libraries/text"]
 
 [registries]
 workspace = "workspace"
