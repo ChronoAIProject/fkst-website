@@ -80,7 +80,7 @@ ensure_fkst_packages_checkout() {
 
 usage() {
   cat <<'EOF'
-usage: scripts/run.sh <check|test|supervise> [args]
+usage: scripts/run.sh <check|test|test-affected|supervise> [args]
 
 Hydrates the fkst.lock-resolved fkst-packages checkout, runs website-local checks for
 `check`, then delegates shared orchestration to:
@@ -95,6 +95,49 @@ shared_host_run() {
     -- "$@"
 }
 
+changed_paths() {
+  {
+    git -C "$ROOT" diff --name-only HEAD --
+    git -C "$ROOT" diff --cached --name-only HEAD --
+    git -C "$ROOT" ls-files --others --exclude-standard
+  } | LC_ALL=C sort -u
+}
+
+cmd_test_affected() {
+  local broad=0 package path packages seen=0
+  packages="$(mktemp "${TMPDIR:-/tmp}/fkst-website-affected-packages.XXXXXX")"
+  while IFS= read -r path; do
+    [ -n "$path" ] || continue
+    seen=1
+    case "$path" in
+      .fkst/local-packages/*/*)
+        package="${path#".fkst/local-packages/"}"
+        package="${package%%/*}"
+        printf '%s\n' "$package" >> "$packages"
+        ;;
+      *)
+        broad=1
+        ;;
+    esac
+  done <<EOF
+$(changed_paths)
+EOF
+
+  if [ "$seen" -eq 0 ] || [ "$broad" -eq 1 ]; then
+    rm -f "$packages"
+    shared_host_run test "$@"
+    return
+  fi
+
+  LC_ALL=C sort -u "$packages" > "$packages.sorted"
+  mv "$packages.sorted" "$packages"
+  while IFS= read -r package; do
+    [ -n "$package" ] || continue
+    shared_host_run test "$@" "$package"
+  done < "$packages"
+  rm -f "$packages"
+}
+
 cmd_check() {
   # The shared host check preserves the old no-BIN path: source ratchets run
   # before fkst-framework resolution. Keep website probe tests host-local.
@@ -105,7 +148,7 @@ cmd_check() {
 }
 
 case "${1:-}" in
-  check|test|supervise) ;;
+  check|test|test-affected|supervise) ;;
   -h|--help|help|"") usage; exit 0 ;;
   *) echo "unknown subcommand: $1" >&2; usage >&2; exit 2 ;;
 esac
@@ -116,6 +159,7 @@ shared="$(ensure_fkst_packages_checkout "$pin")"
 
 case "$1" in
   check) shift; cmd_check "$@" ;;
+  test-affected) shift; cmd_test_affected "$@" ;;
   test|supervise) exec "$shared/scripts/run.sh" host \
     --host-root "$ROOT" \
     --local-packages "$LOCAL_PACKAGES" \

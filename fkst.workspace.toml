@@ -11,12 +11,13 @@ libraries = [".fkst/local-libraries/text"]
 [registries]
 workspace = "workspace"
 
-# Cross-repo library reference (库 C consuming 库 B's published `contract` core,
-# pinned by exact git sha; the resolved sha + content hashes live in fkst.lock).
-# Root-owned source binding: consuming units just name "contract" in lib_deps.
+# Cross-repo library and platform package reference, pinned by exact git sha;
+# the resolved sha + content hashes live in fkst.lock. Root-owned source
+# binding: consuming units just name "contract" in lib_deps, while host
+# supervision declares the fkst-packages platform packages it loads.
 [[external_sources]]
 id = "fkst-packages-platform"
 git = "https://github.com/ChronoAIProject/fkst-packages.git"
 rev = "a20aeffec442507bfb527a8df4e8b36597c0c75c"
 libraries = ["contract"]
-packages = [] # explicit: consumes no cross-repo packages from this source
+packages = ["github-devloop", "github-devloop-pr", "github-devloop-integration"]
