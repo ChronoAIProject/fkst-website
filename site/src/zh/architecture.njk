@@ -1,0 +1,88 @@
+---
+layout: layouts/page.njk
+permalink: /zh/architecture.html
+lang: zh-Hans
+title: 架构 | fkst
+description: fkst 架构概览：公司三档模型、可靠投递，以及三仓 package 生态。
+brandHref: /
+nav:
+  - label: 首页
+    href: /zh/
+  - label: 架构
+    current: true
+  - label: 信条
+    href: /zh/doctrine.html
+  - label: fkst-substrate
+    href: https://github.com/ChronoAIProject/fkst-substrate
+    external: true
+  - label: fkst-packages
+    href: https://github.com/ChronoAIProject/fkst-packages
+    external: true
+  - label: fkst-website
+    href: https://github.com/ChronoAIProject/fkst-website
+    external: true
+languageSwitch:
+  - label: EN
+    href: /architecture.html
+  - label: 中文
+    current: true
+footerHref: /zh/
+footerLabel: 返回首页
+---
+<section class="page-header" aria-labelledby="page-title">
+  <p class="eyebrow">架构概览</p>
+  <h1 id="page-title">以公司形态运行在持久事件之上。</h1>
+  <p class="page-intro">
+    fkst 将 engine、共享 package 与 website 域行为拆在不同仓库中；
+    运行时把多个 package root union 成一张显式 department graph。
+  </p>
+</section>
+
+<div class="page-content">
+  <section class="content-section" aria-labelledby="company-model">
+    <h2 id="company-model">公司模型</h2>
+    <div>
+      <p>
+        工作被建模为 Company、Department、Person 三档。Company 持有
+        持久 graph，department 声明具体职责，person 是被 spawn 出来
+        执行有边界任务的 worker。
+      </p>
+      <ul>
+        <li>source 从 GitHub issue、timer 等外部事实 raise event。</li>
+        <li>fanout 让多个 department 消费同一个事实，而不是做运行时拦截。</li>
+        <li>route 选择下一站，spawn 创建工作，RAISED 记录产生的新 event。</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="content-section" aria-labelledby="delivery-model">
+    <h2 id="delivery-model">可靠投递</h2>
+    <div>
+      <p>
+        投递由 redb 支撑，并把 retry 视为正常运行：event 至少投递一次
+        直到 ack，lease 与 fencing 避免 stale ownership 竞争，DLQ
+        保留失败事实以便检查。
+      </p>
+      <p>
+        大体量内容不进入可靠投递 payload。payload 只带 source_ref
+        指针和小控制字段，consumer 在需要时回源读取权威内容。
+      </p>
+    </div>
+  </section>
+
+  <section class="content-section" aria-labelledby="repo-model">
+    <h2 id="repo-model">三仓生态</h2>
+    <div>
+      <p>
+        生态拆成三个公开仓库。fkst-substrate 负责 engine 与 package
+        contract，fkst-packages 负责可复用 package 模式，fkst-website
+        只添加 website 域 Lua 行为。
+      </p>
+      <p>
+        package 可以是 flat 或 composed。composed package 通过声明组合
+        引用依赖；engine 在运行时接收多个已 pin 的 package root，并
+        union 成一张 graph。
+      </p>
+    </div>
+  </section>
+</div>
