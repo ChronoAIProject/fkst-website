@@ -172,6 +172,40 @@ local function normalise_positive_integer(value)
   return number
 end
 
+local QUEUE_STARVATION_REPAIR_QUEUES = {
+  "consensus.consensus_reached",
+  "github-devloop-pr.devloop_merge_ready",
+  "github-devloop-pr.devloop_merge_queue_tick",
+}
+
+local function safe_diagnostic_token(value)
+  if type(value) ~= "string" then
+    return nil
+  end
+  if #value == 0 or #value > 120 then
+    return nil
+  end
+  if value:match("^[%w%._%-/]+$") == nil then
+    return nil
+  end
+  return value
+end
+
+local function append_queue_starvation_repair_fields(fields, body)
+  table.insert(fields, "repair_scope=queue-dlq")
+  table.insert(fields, "affected_queues=" .. table.concat(QUEUE_STARVATION_REPAIR_QUEUES, ","))
+  table.insert(fields, "runbook=class-level-queue-dlq")
+
+  local head_source = safe_diagnostic_token(body:match("Head source:%s*`([^`]+)`"))
+  if head_source ~= nil then
+    table.insert(fields, "head_source=" .. head_source)
+  end
+  local last_merge_age = body:match("Last merge age:%s*(%d+)")
+  if last_merge_age ~= nil then
+    table.insert(fields, "last_merge_age=" .. last_merge_age)
+  end
+end
+
 function M.gh_issue_body_cmd(repo, issue_number)
   if not M.is_valid_repo(repo) then
     error("invalid repo: " .. tostring(repo))
@@ -225,13 +259,19 @@ function M.queue_starvation_diagnostic_fields(issue_number, issue_body_raw, prs_
 
   local head_issue = normalise_positive_integer(body_view.body:match("Queue head:%s*#(%d+)"))
   local head_pr = normalise_positive_integer(body_view.body:match("Queue head PR:%s*#(%d+)"))
+  local fields = {
+    "issue=" .. tostring(issue),
+    "source=queue-starvation-watchdog",
+    "incident_class=merge-ready-starvation",
+  }
+  if head_issue ~= nil then
+    table.insert(fields, "head_issue=" .. tostring(head_issue))
+  end
   if head_pr == nil then
-    return {
-      "issue=" .. tostring(issue),
-      "source=queue-starvation-watchdog",
-      "diagnosis=missing-head-pr",
-      "action=diagnose-only",
-    }, nil
+    table.insert(fields, "diagnosis=missing-head-pr")
+    append_queue_starvation_repair_fields(fields, body_view.body)
+    table.insert(fields, "action=diagnose-only")
+    return fields, nil
   end
 
   local head_pr_is_open = false
@@ -247,16 +287,10 @@ function M.queue_starvation_diagnostic_fields(issue_number, issue_body_raw, prs_
     diagnosis = "head-pr-still-in-open-pr-snapshot"
   end
 
-  local fields = {
-    "issue=" .. tostring(issue),
-    "source=queue-starvation-watchdog",
-    "head_pr=" .. tostring(head_pr),
-    "diagnosis=" .. diagnosis,
-    "action=diagnose-only",
-  }
-  if head_issue ~= nil then
-    table.insert(fields, 3, "head_issue=" .. tostring(head_issue))
-  end
+  table.insert(fields, "head_pr=" .. tostring(head_pr))
+  table.insert(fields, "diagnosis=" .. diagnosis)
+  append_queue_starvation_repair_fields(fields, body_view.body)
+  table.insert(fields, "action=diagnose-only")
   return fields, nil
 end
 

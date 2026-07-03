@@ -21,6 +21,7 @@ local ISSUES_JSON = '[{"number":1,"title":"An issue","state":"OPEN","labels":[],
 local PRS_JSON = '[{"number":2,"title":"A PR","state":"OPEN","labels":[],"updatedAt":"2026-06-10T02:03:04Z","url":"https://github.example/owner/x/pull/2"}]\n'
 local STARVATION_ISSUES_JSON = '[{"number":53,"title":"Queue starvation: merge-ready head #47 has no recent merge","state":"OPEN","labels":[],"updatedAt":"2026-06-10T04:05:06Z","url":"https://github.example/owner/x/issues/53"}]\n'
 local STARVATION_ISSUE_BODY_JSON = '{"body":"Queue starvation watchdog fired from deterministic observability signals.\\n\\nQueue head: #47 site-build 2\\nQueue head PR: #2\\nQueue head age: 85 minutes\\nThreshold: 60 minutes\\n"}\n'
+local STARVATION_DLQ_BODY_JSON = '{"body":"Queue starvation watchdog fired from deterministic observability signals.\\n\\nDetector: `queue-starvation`\\nQueue head: #68 Implement the foundational back-to-top button\\nQueue head PR: #69\\nQueue head age: 91 minutes\\nThreshold: 60 minutes\\nLast merge age: 3749\\nHead source: `observability-sample`\\n"}\n'
 local SHUFFLED_ISSUES_JSON = '[{"url":"https://github.example/owner/x/issues/1","updatedAt":"2026-06-10T01:02:03Z","labels":[],"state":"OPEN","title":"An issue","number":1}]\n'
 local SHUFFLED_PRS_JSON = '[{"url":"https://github.example/owner/x/pull/2","updatedAt":"2026-06-10T02:03:04Z","labels":[],"state":"OPEN","title":"A PR","number":2}]\n'
 
@@ -192,7 +193,26 @@ return {
     t.eq(numbers[1], 53)
 
     local fields = core.queue_starvation_diagnostic_fields(53, STARVATION_ISSUE_BODY_JSON, PRS_JSON)
-    t.eq(table.concat(fields, " "), "issue=53 source=queue-starvation-watchdog head_issue=47 head_pr=2 diagnosis=head-pr-still-in-open-pr-snapshot action=diagnose-only")
+    t.eq(
+      table.concat(fields, " "),
+      "issue=53 source=queue-starvation-watchdog incident_class=merge-ready-starvation head_issue=47 head_pr=2 diagnosis=head-pr-still-in-open-pr-snapshot repair_scope=queue-dlq affected_queues=consensus.consensus_reached,github-devloop-pr.devloop_merge_ready,github-devloop-pr.devloop_merge_queue_tick runbook=class-level-queue-dlq action=diagnose-only"
+    )
+  end,
+
+  test_queue_starvation_diagnosis_surfaces_class_level_dlq_repair = function()
+    local fields = core.queue_starvation_diagnostic_fields(70, STARVATION_DLQ_BODY_JSON, "[]")
+    local line = table.concat(fields, " ")
+    t.is_true(line:find("issue=70", 1, true) ~= nil)
+    t.is_true(line:find("incident_class=merge-ready-starvation", 1, true) ~= nil)
+    t.is_true(line:find("head_issue=68", 1, true) ~= nil)
+    t.is_true(line:find("head_pr=69", 1, true) ~= nil)
+    t.is_true(line:find("diagnosis=head-pr-not-in-open-pr-snapshot", 1, true) ~= nil)
+    t.is_true(line:find("repair_scope=queue-dlq", 1, true) ~= nil)
+    t.is_true(line:find("affected_queues=consensus.consensus_reached,github-devloop-pr.devloop_merge_ready,github-devloop-pr.devloop_merge_queue_tick", 1, true) ~= nil)
+    t.is_true(line:find("runbook=class-level-queue-dlq", 1, true) ~= nil)
+    t.is_true(line:find("head_source=observability-sample", 1, true) ~= nil)
+    t.is_true(line:find("last_merge_age=3749", 1, true) ~= nil)
+    t.is_true(line:find("action=diagnose-only", 1, true) ~= nil)
   end,
 
   test_manifest_lists_generated_docs_with_sha256 = function()
@@ -270,9 +290,12 @@ return {
       if line:find("tag=QUEUE_STARVATION_DIAGNOSIS", 1, true) ~= nil then
         found = true
         t.is_true(line:find("issue=53", 1, true) ~= nil)
+        t.is_true(line:find("incident_class=merge-ready-starvation", 1, true) ~= nil)
         t.is_true(line:find("head_issue=47", 1, true) ~= nil)
         t.is_true(line:find("head_pr=2", 1, true) ~= nil)
         t.is_true(line:find("diagnosis=head-pr-still-in-open-pr-snapshot", 1, true) ~= nil)
+        t.is_true(line:find("repair_scope=queue-dlq", 1, true) ~= nil)
+        t.is_true(line:find("affected_queues=consensus.consensus_reached,github-devloop-pr.devloop_merge_ready,github-devloop-pr.devloop_merge_queue_tick", 1, true) ~= nil)
         t.is_true(line:find("action=diagnose-only", 1, true) ~= nil)
       end
     end
