@@ -1,8 +1,12 @@
-# Package roots for engine host conformance.
-#
-# Relative paths are resolved from the fkst-website repo root. The first root is
-# used as the engine conformance project root; keep a local package first so
-# external pinned package roots stay external from the engine's point of view.
-# fkst-packages:<path> is resolved from the pinned shared fkst-packages checkout.
+# Package roots for workflow-dogfood: site + idle-detector + github-devloop-workflow topology.
 .fkst/local-packages/site-board
 fkst-packages:packages/idle-detector
+fkst-packages:packages/github-proxy
+fkst-packages:packages/consensus
+fkst-packages:packages/github-devloop-intake
+fkst-packages:packages/github-devloop
+fkst-packages:packages/github-devloop-pr
+fkst-packages:packages/github-devloop-ops
+fkst-packages:packages/github-devloop-decompose
+fkst-packages:packages/github-devloop-integration
+fkst-packages:packages/github-devloop-workflow
