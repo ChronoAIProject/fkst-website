@@ -5,11 +5,21 @@ from __future__ import annotations
 
 from html.parser import HTMLParser
 from pathlib import Path
+import subprocess
 
 
 ROOT = Path(__file__).resolve().parents[1]
 SITE_DIR = ROOT / "site" / "_site"
 MANIFEST = ROOT / "site" / "probe-manifest"
+FOUNDATION_SHA = "3bfdce3077ae9dafb7f8607e67e698d409b744b3"
+TARGET_SHA = "141cc516eefa3adea68006307facb5d532bd9284"
+RECURRENCE_PATHS = (
+    "site",
+    "scripts",
+    ".fkst/local-packages",
+    ".fkst/local-libraries",
+)
+RECURRENCE_PATTERN = r"back[-_]?to[-_]?top|backtotop|data-back-to-top"
 
 
 class BackToTopParser(HTMLParser):
@@ -45,8 +55,52 @@ def output_path(route: str) -> Path:
     return SITE_DIR / route.lstrip("/")
 
 
-def main() -> int:
+def git(*args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", "-C", str(ROOT), *args],
+        check=False,
+        encoding="utf-8",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+
+def recurrence_audit_failures() -> list[str]:
     failures: list[str] = []
+    for sha, label in ((FOUNDATION_SHA, "#68 foundation"), (TARGET_SHA, "target")):
+        result = git("rev-parse", "--verify", f"{sha}^{{commit}}")
+        if result.returncode != 0:
+            failures.append(f"{label}: missing reviewable commit {sha}")
+
+    if failures:
+        return failures
+
+    ancestor = git("merge-base", "--is-ancestor", FOUNDATION_SHA, TARGET_SHA)
+    if ancestor.returncode == 0:
+        failures.append(f"#68 foundation {FOUNDATION_SHA} is already in target {TARGET_SHA}")
+    elif ancestor.returncode != 1:
+        failures.append(f"could not compare #68 foundation with target: {ancestor.stderr.strip()}")
+
+    grep = git(
+        "grep",
+        "-n",
+        "-i",
+        "-E",
+        RECURRENCE_PATTERN,
+        TARGET_SHA,
+        "--",
+        *RECURRENCE_PATHS,
+    )
+    if grep.returncode == 0:
+        failures.append(f"target {TARGET_SHA} already has back-to-top reuse surface:\n{grep.stdout}")
+    elif grep.returncode != 1:
+        failures.append(f"could not audit target tree for back-to-top reuse surface: {grep.stderr.strip()}")
+
+    return failures
+
+
+def main() -> int:
+    failures: list[str] = recurrence_audit_failures()
     for route in manifest_paths():
         path = output_path(route)
         if not path.is_file():
