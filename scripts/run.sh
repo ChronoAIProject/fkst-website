@@ -147,13 +147,67 @@ raise SystemExit(0 if data.get("kind") == "package.composed" else 1)
 PY
 }
 
+write_package_test_project() {
+  local package="$1" package_root="$2" project_root="$3"
+  mkdir -p "$project_root/packages" "$project_root/libraries" "$project_root/scripts"
+  cp -R "$package_root" "$project_root/packages/$package"
+  if [ -d "$ROOT/.fkst/local-libraries" ]; then
+    cp -R "$ROOT/.fkst/local-libraries/." "$project_root/libraries/"
+  fi
+  cp "$LOCK_FILE" "$project_root/fkst.lock"
+  cp "$ROOT/scripts/run.sh" "$project_root/scripts/run.sh"
+
+  python3 - "$LOCK_FILE" "$project_root/fkst.workspace.toml" <<'PY'
+import json
+import sys
+import tomllib
+from pathlib import Path
+
+lock_path = Path(sys.argv[1])
+workspace_path = Path(sys.argv[2])
+data = tomllib.loads(lock_path.read_text(encoding="utf-8"))
+sources = data.get("external_source", [])
+if isinstance(sources, dict):
+    sources = [sources]
+
+lines = [
+    "[workspace]",
+    'units = ["packages/*", "libraries/*"]',
+    'packages = ["packages/*"]',
+    'libraries = ["libraries/*"]',
+    "",
+    "[registries]",
+    'workspace = "workspace"',
+]
+
+for source in sources:
+    libraries = [item["name"] for item in source.get("libraries", []) if isinstance(item, dict) and isinstance(item.get("name"), str)]
+    if not libraries:
+        continue
+    resolved = source.get("resolved", {})
+    lines.extend([
+        "",
+        "[[external_sources]]",
+        f'id = {json.dumps(source["id"])}',
+        f'git = {json.dumps(source["git"])}',
+        f'rev = {json.dumps(resolved["rev"])}',
+        "libraries = [" + ", ".join(json.dumps(name) for name in libraries) + "]",
+        "packages = []",
+    ])
+
+workspace_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+PY
+}
+
 cmd_test_package_only() {
-  local package="$1" package_root="$LOCAL_PACKAGES/$package" runtime_root durable_root status=0 composed_status=0
+  local package="$1" package_root="$LOCAL_PACKAGES/$package" test_project runtime_root durable_root status=0 composed_status=0
   [ -d "$package_root" ] || { echo "error: affected package does not exist: $package" >&2; return 1; }
   resolve_host_bin || return 1
 
+  test_project="$(mktemp -d "${TMPDIR:-/tmp}/fkst-host-test-project.XXXXXX")"
   runtime_root="$(mktemp -d "${TMPDIR:-/tmp}/fkst-host-test-rt.XXXXXX")"
   durable_root="$(mktemp -d "${TMPDIR:-/tmp}/fkst-host-test-durable.XXXXXX")"
+  write_package_test_project "$package" "$package_root" "$test_project"
   (
     export FKST_RUNTIME_ROOT="$runtime_root"
     export FKST_DURABLE_ROOT="$durable_root"
@@ -174,15 +228,15 @@ cmd_test_package_only() {
         echo "skip single-package conformance for composed package: $package"
         ;;
       1)
-        "$BIN" conformance --project-root "$package_root" --package-root "$package_root"
+        "$BIN" conformance --project-root "$test_project/packages/$package" --package-root "$test_project/packages/$package"
         ;;
       *)
         exit "$composed_status"
         ;;
     esac
-    "$BIN" test --project-root "$ROOT" --package-root "$package_root"
+    "$BIN" test --project-root "$test_project" --package-root "$test_project/packages/$package"
   ) || status=$?
-  rm -rf "$runtime_root" "$durable_root"
+  rm -rf "$test_project" "$runtime_root" "$durable_root"
   return "$status"
 }
 
