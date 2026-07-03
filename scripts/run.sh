@@ -80,7 +80,7 @@ ensure_fkst_packages_checkout() {
 
 usage() {
   cat <<'EOF'
-usage: scripts/run.sh <check|test|test-affected|supervise> [args]
+usage: scripts/run.sh <check|test|supervise> [args]
 
 Hydrates the fkst.lock-resolved fkst-packages checkout, runs website-local checks for
 `check`, then delegates shared orchestration to:
@@ -104,14 +104,8 @@ cmd_check() {
   python3 -B "$ROOT/scripts/probe_site_test.py"
 }
 
-cmd_test_affected() {
-  # This host does not own a trusted affected-test selector; keep the local
-  # iteration entrypoint fail-closed by delegating to the established full test.
-  shared_host_run test "$@"
-}
-
 case "${1:-}" in
-  check|test|test-affected|supervise) ;;
+  check|test|supervise) ;;
   -h|--help|help|"") usage; exit 0 ;;
   *) echo "unknown subcommand: $1" >&2; usage >&2; exit 2 ;;
 esac
@@ -122,7 +116,6 @@ shared="$(ensure_fkst_packages_checkout "$pin")"
 
 case "$1" in
   check) shift; cmd_check "$@" ;;
-  test-affected) shift; cmd_test_affected "$@" ;;
   test|supervise) exec "$shared/scripts/run.sh" host \
     --host-root "$ROOT" \
     --local-packages "$LOCAL_PACKAGES" \
