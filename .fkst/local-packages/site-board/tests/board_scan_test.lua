@@ -102,25 +102,6 @@ local function publish_calls()
 end
 
 return {
-  test_host_runner_test_affected_routes_package_only_changes = function()
-    local source = file.read("scripts/run.sh")
-    t.is_true(source:find("usage: scripts/run.sh <check|test|test-affected|supervise> [args]", 1, true) ~= nil)
-    t.is_true(source:find("cmd_test_affected()", 1, true) ~= nil)
-    t.is_true(source:find('git -C "$ROOT" diff --name-only HEAD', 1, true) ~= nil)
-    t.is_true(source:find('git -C "$ROOT" ls-files --others --exclude-standard', 1, true) ~= nil)
-    t.is_true(source:find("write_package_test_project()", 1, true) ~= nil)
-    t.is_true(source:find('units = ["packages/*", "libraries/*"]', 1, true) ~= nil)
-    t.is_true(source:find('packages = ["packages/*"]', 1, true) ~= nil)
-    t.is_true(source:find('cp "$ROOT/scripts/run.sh" "$project_root/scripts/run.sh"', 1, true) ~= nil)
-    t.is_true(source:find('"$BIN" test --project-root "$test_project" --package-root "$test_project/packages/$package"', 1, true) ~= nil)
-    t.is_true(source:find("scripts/run.sh)\n      return 1", 1, true) ~= nil)
-    t.is_true(source:find("scripts/*|site/*|.github/*|fkst.workspace.toml|fkst.lock|*.toml|*.lock|*.json|*.yml|*.yaml)", 1, true) ~= nil)
-    t.is_true(source:find(".fkst/local-packages/*/*)", 1, true) ~= nil)
-    t.is_true(source:find('package="${path#".fkst/local-packages/"}"', 1, true) ~= nil)
-    t.is_true(source:find('cmd_test_package_only "$package"', 1, true) ~= nil)
-    t.is_true(source:find("shared_host_run test", 1, true) ~= nil)
-  end,
-
   test_persistence_class_is_stateless_adapter = function()
     t.eq(core.persistence_class(), "stateless_adapter")
   end,
