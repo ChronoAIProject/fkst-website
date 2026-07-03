@@ -1,3 +1,12 @@
+{#
+  Recurrence audit for #90:
+  #68 "Implement the foundational back-to-top button" produced a same-class
+  branch implementation, but commit 3bfdce3 is not an ancestor of target
+  141cc516eefa3adea68006307facb5d532bd9284, and that target tree has no
+  back-to-top component, script, selector, or markup to reuse. This component is
+  the explicit waiver path: keep the foundation in one shared layout include,
+  with dependency-free progressive enhancement instead of per-page copies.
+#}
 <button
   class="back-to-top-button"
   type="button"
