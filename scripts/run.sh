@@ -80,7 +80,7 @@ ensure_fkst_packages_checkout() {
 
 usage() {
   cat <<'EOF'
-usage: scripts/run.sh <check|test|supervise> [args]
+usage: scripts/run.sh <check|test|test-affected|supervise> [args]
 
 Hydrates the fkst.lock-resolved fkst-packages checkout, runs website-local checks for
 `check`, then delegates shared orchestration to:
@@ -104,11 +104,26 @@ cmd_check() {
   python3 -B "$ROOT/scripts/probe_site_test.py"
 }
 
+site_build_and_smoke() {
+  (cd "$ROOT/site" && npm run build)
+  python3 -B "$ROOT/scripts/check_back_to_top.py"
+}
+
+cmd_test_affected() {
+  site_build_and_smoke
+}
+
 case "${1:-}" in
-  check|test|supervise) ;;
+  check|test|test-affected|supervise) ;;
   -h|--help|help|"") usage; exit 0 ;;
   *) echo "unknown subcommand: $1" >&2; usage >&2; exit 2 ;;
 esac
+
+if [ "$1" = "test-affected" ]; then
+  shift
+  cmd_test_affected "$@"
+  exit
+fi
 
 pin="$(read_fkst_packages_pin_from_lock)"
 shared="$(ensure_fkst_packages_checkout "$pin")"

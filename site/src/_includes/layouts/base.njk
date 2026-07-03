@@ -42,7 +42,13 @@
     </main>
 
     <footer class="site-footer">
-      <p>{{ footerText }}</p>
+      {% if footerHref and footerLabel %}
+        <p><a href="{{ footerHref | url }}">{{ footerLabel }}</a></p>
+      {% else %}
+        <p>{{ footerText }}</p>
+      {% endif %}
     </footer>
+
+    {% include "components/BackToTopButton.njk" %}
   </body>
 </html>

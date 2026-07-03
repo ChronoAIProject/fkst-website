@@ -1,0 +1,50 @@
+{#
+  Recurrence audit for #90:
+  #68 "Implement the foundational back-to-top button" produced a same-class
+  branch implementation, but commit 3bfdce3 is not an ancestor of target
+  141cc516eefa3adea68006307facb5d532bd9284, and that target tree has no
+  back-to-top component, script, selector, or markup to reuse. The reviewable
+  proof is `scripts/check_back_to_top.py`, which verifies those Git facts before
+  checking built markup. This component is the explicit waiver path: keep the
+  foundation in one shared layout include, with dependency-free progressive
+  enhancement instead of per-page copies.
+#}
+<button
+  class="back-to-top-button"
+  type="button"
+  data-back-to-top
+  aria-label="{% if lang == 'zh-Hans' %}返回顶部{% else %}Back to top{% endif %}"
+  aria-hidden="true"
+  tabindex="-1"
+>
+  <span aria-hidden="true">↑</span>
+</button>
+<script data-back-to-top-script>
+  (() => {
+    const button = document.querySelector("[data-back-to-top]");
+    if (!button) {
+      return;
+    }
+
+    const threshold = 320;
+    const setVisible = (visible) => {
+      button.classList.toggle("is-visible", visible);
+      button.toggleAttribute("data-visible", visible);
+      button.tabIndex = visible ? 0 : -1;
+      if (visible) {
+        button.removeAttribute("aria-hidden");
+      } else {
+        button.setAttribute("aria-hidden", "true");
+      }
+    };
+    const updateVisibility = () => {
+      setVisible(window.scrollY > threshold);
+    };
+
+    button.addEventListener("click", () => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+    window.addEventListener("scroll", updateVisibility, { passive: true });
+    updateVisibility();
+  })();
+</script>
