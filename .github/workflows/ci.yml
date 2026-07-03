@@ -2,9 +2,9 @@ name: ci
 
 on:
   push:
-    branches: [main, dev, integration]
+    branches: [main, dev, integration, workflow-dogfood]
   pull_request:
-    branches: [main, dev, integration]
+    branches: [main, dev, integration, workflow-dogfood]
   workflow_dispatch:
     inputs:
       substrate_ref:
