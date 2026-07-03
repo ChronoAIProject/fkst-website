@@ -80,7 +80,7 @@ ensure_fkst_packages_checkout() {
 
 usage() {
   cat <<'EOF'
-usage: scripts/run.sh <check|test|supervise> [args]
+usage: scripts/run.sh <check|test|test-affected|supervise> [args]
 
 Hydrates the fkst.lock-resolved fkst-packages checkout, runs website-local checks for
 `check`, then delegates shared orchestration to:
@@ -102,10 +102,66 @@ cmd_check() {
   shared_host_run check
   echo "=== website probe_site_test.py ==="
   python3 -B "$ROOT/scripts/probe_site_test.py"
+  echo "=== website npm test ==="
+  npm --prefix "$ROOT/site" test
+}
+
+changed_paths() {
+  local base
+  local current
+  current="$(
+    {
+      git -C "$ROOT" diff --name-only
+      git -C "$ROOT" diff --cached --name-only
+      git -C "$ROOT" ls-files --others --exclude-standard
+    } | LC_ALL=C sort -u
+  )"
+  if [ -n "$current" ]; then
+    printf '%s\n' "$current"
+    return
+  fi
+  if base="$(git -C "$ROOT" merge-base HEAD origin/dev 2>/dev/null)"; then
+    git -C "$ROOT" diff --name-only "$base...HEAD"
+  else
+    git -C "$ROOT" diff --name-only HEAD
+  fi
+}
+
+site_only_changed() {
+  changed_paths | python3 -c '
+import sys
+
+paths = [line.strip() for line in sys.stdin if line.strip()]
+if paths and all(
+    path.startswith("site/")
+    or path.startswith(".github/")
+    or path == "scripts/run.sh"
+    for path in paths
+):
+    raise SystemExit(0)
+raise SystemExit(1)
+'
+}
+
+cmd_site_test() {
+  echo "=== website npm test ==="
+  npm --prefix "$ROOT/site" test
+  echo "=== website build ==="
+  npm --prefix "$ROOT/site" run build
+  echo "=== website built-site probe ==="
+  bash "$ROOT/scripts/probe_built_site.sh" "$ROOT/site/_site"
+}
+
+cmd_test_affected() {
+  if site_only_changed; then
+    cmd_site_test
+    return
+  fi
+  shared_host_run test
 }
 
 case "${1:-}" in
-  check|test|supervise) ;;
+  check|test|test-affected|supervise) ;;
   -h|--help|help|"") usage; exit 0 ;;
   *) echo "unknown subcommand: $1" >&2; usage >&2; exit 2 ;;
 esac
@@ -116,6 +172,7 @@ shared="$(ensure_fkst_packages_checkout "$pin")"
 
 case "$1" in
   check) shift; cmd_check "$@" ;;
+  test-affected) shift; cmd_test_affected "$@" ;;
   test|supervise) exec "$shared/scripts/run.sh" host \
     --host-root "$ROOT" \
     --local-packages "$LOCAL_PACKAGES" \
