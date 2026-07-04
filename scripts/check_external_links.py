@@ -160,6 +160,17 @@ def assert_marked(parser: ExternalLinkParser, href: str, failures: list[str]) ->
         failures.append(f"{href}: expected accessible External link text")
 
 
+def assert_marked_at_least(parser: ExternalLinkParser, href: str, minimum: int, failures: list[str]) -> None:
+    if parser.marker_count.get(href, 0) < minimum:
+        failures.append(f"{href}: expected at least {minimum} external-link marker(s)")
+    if parser.external_class_count.get(href, 0) < minimum:
+        failures.append(f"{href}: expected at least {minimum} external-link class hook(s)")
+    if parser.external_data_count.get(href, 0) < minimum:
+        failures.append(f"{href}: expected at least {minimum} data-external-link hook(s)")
+    if len(parser.hidden_text.get(href, [])) < minimum:
+        failures.append(f"{href}: expected at least {minimum} accessible External link text node(s)")
+
+
 def assert_unmarked(parser: ExternalLinkParser, href: str, failures: list[str]) -> None:
     if parser.marker_count.get(href, 0):
         failures.append(f"{href}: internal or non-http link received an external-link marker")
@@ -194,8 +205,24 @@ def main() -> int:
 
     home = parse_html(HOME_OUTPUT, failures)
     if home:
-        if home.marker_count.get("https://github.com/ChronoAIProject/fkst-substrate", 0) < 2:
-            failures.append("home page outbound repository links are missing external-link markers")
+        assert_marked_at_least(
+            home,
+            "https://github.com/ChronoAIProject/fkst-substrate",
+            2,
+            failures,
+        )
+        assert_marked_at_least(
+            home,
+            "https://github.com/ChronoAIProject/fkst-packages",
+            2,
+            failures,
+        )
+        assert_marked_at_least(
+            home,
+            "https://github.com/ChronoAIProject/fkst-website",
+            2,
+            failures,
+        )
         assert_unmarked(home, "/fkst-website/architecture.html", failures)
 
     if not STYLE_OUTPUT.is_file():

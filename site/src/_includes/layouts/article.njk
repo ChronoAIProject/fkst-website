@@ -10,6 +10,7 @@
   {% set tableOfContents = [] %}
 {% endif %}
 
+{% include "components/ArticleScrollProgress.njk" %}
 <section class="page-header article-header" aria-labelledby="page-title">
   {% if articleEyebrow %}
     <p class="eyebrow">{{ articleEyebrow }}</p>

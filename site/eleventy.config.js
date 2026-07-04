@@ -2,6 +2,7 @@ const markdownIt = require("markdown-it");
 const { addCodeBlockCopyControls } = require("./lib/codeBlockCopy");
 const {
   addExternalLinkMarkers,
+  externalLinkAttributes,
   externalLinkMarker,
   shouldUseEleventyUrlFilter,
 } = require("./lib/externalLinks");
@@ -14,6 +15,7 @@ module.exports = function (eleventyConfig) {
   );
 
   eleventyConfig.addFilter("externalLinkMarker", externalLinkMarker);
+  eleventyConfig.addFilter("externalLinkAttributes", externalLinkAttributes);
   eleventyConfig.addFilter("shouldUseEleventyUrl", shouldUseEleventyUrlFilter);
   eleventyConfig.addFilter("readingTime", estimateReadingTime);
   eleventyConfig.addFilter("tocEntries", extractTocEntries);
