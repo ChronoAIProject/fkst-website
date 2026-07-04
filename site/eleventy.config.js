@@ -6,13 +6,13 @@ const {
   externalLinkMarker,
   shouldUseEleventyUrlFilter,
 } = require("./lib/externalLinks");
-const { addHeadingAnchors, renderHeadingAnchor } = require("./lib/headingAnchors");
+const { renderHeadingAnchor } = require("./lib/headingAnchors");
 const { lastUpdatedMetadata } = require("./src/_includes/utils/last-updated");
 const { estimateReadingTime } = require("./src/_includes/utils/reading-time");
 
 module.exports = function (eleventyConfig) {
   const markdownLibrary = addExternalLinkMarkers(
-    addHeadingAnchors(addCodeBlockCopyControls(markdownIt({ html: true })))
+    addCodeBlockCopyControls(markdownIt({ html: true }))
   );
 
   eleventyConfig.addFilter("externalLinkMarker", externalLinkMarker);
