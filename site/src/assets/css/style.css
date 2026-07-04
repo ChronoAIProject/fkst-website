@@ -64,6 +64,7 @@ a:focus-visible {
 .features,
 .page-header,
 .page-content,
+.article-shell,
 .site-footer {
   margin-inline: auto;
   max-width: 1120px;
@@ -210,6 +211,55 @@ h1 {
   display: grid;
   gap: 18px;
   padding-block: 16px 72px;
+}
+
+.article-shell {
+  display: grid;
+  gap: 28px;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 240px);
+}
+
+.article-main {
+  min-width: 0;
+}
+
+.article-shell .page-header,
+.article-shell .page-content {
+  max-width: none;
+  padding-inline: 0;
+}
+
+.toc-sidebar {
+  border-left: 1px solid var(--line);
+  color: var(--muted);
+  padding-block: 16px 72px;
+  padding-left: 20px;
+}
+
+.toc-nav {
+  position: sticky;
+  top: 20px;
+}
+
+.toc-list {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.toc-item {
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.toc-item-level-3 {
+  padding-left: 14px;
+}
+
+.toc-item a {
+  text-decoration: none;
 }
 
 .content-section {
@@ -367,6 +417,21 @@ h2 {
 
   .feature-grid {
     grid-template-columns: 1fr;
+  }
+
+  .article-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .toc-sidebar {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    padding-block: 0 28px;
+    padding-left: 0;
+  }
+
+  .toc-nav {
+    position: static;
   }
 
   .content-section {

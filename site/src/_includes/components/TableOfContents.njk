@@ -1,0 +1,18 @@
+{% set items = tableOfContents or [] %}
+<aside class="toc-sidebar">
+  <nav
+    class="toc-nav"
+    data-toc-sidebar
+    aria-label="{% if lang == 'zh-Hans' %}目录{% else %}Table of contents{% endif %}"
+  >
+    {% if items | length %}
+      <ol class="toc-list">
+        {% for item in items %}
+          <li class="toc-item toc-item-level-{{ item.level }}">
+            <a href="#{{ item.id | escape }}">{{ item.text | escape }}</a>
+          </li>
+        {% endfor %}
+      </ol>
+    {% endif %}
+  </nav>
+</aside>
