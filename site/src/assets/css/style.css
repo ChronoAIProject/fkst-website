@@ -519,6 +519,24 @@ h1 {
   padding-top: 34px;
 }
 
+.heading-anchor-target {
+  scroll-margin-top: 24px;
+}
+
+.heading-anchor-link {
+  color: var(--muted);
+  display: inline-flex;
+  font-size: 0.62em;
+  margin-left: 0.38em;
+  text-decoration: none;
+  vertical-align: 0.12em;
+}
+
+.heading-anchor-link:hover,
+.heading-anchor-link:focus-visible {
+  color: var(--accent);
+}
+
 h2 {
   font-size: clamp(1.75rem, 4vw, 3.1rem);
   letter-spacing: 0;

@@ -106,8 +106,10 @@ cmd_check() {
 
 site_build_and_smoke() {
   node "$ROOT/site/test/externalLinks.test.js"
+  node "$ROOT/site/test/headingAnchors.test.js"
   (cd "$ROOT/site" && node test/theme.test.js)
   (cd "$ROOT/site" && npm run build)
+  python3 -B "$ROOT/scripts/check_heading_anchors.py"
   python3 -B "$ROOT/scripts/check_back_to_top.py"
   python3 -B "$ROOT/scripts/check_code_block_copy.py"
   node "$ROOT/scripts/check_code_block_copy_behavior.js"
