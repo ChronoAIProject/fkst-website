@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Smoke-check the header locale scaffold."""
+"""Check rendered header locale switching behavior."""
 
 from __future__ import annotations
 
@@ -15,6 +15,26 @@ SITE_DIR = ROOT / "site" / "_site"
 MANIFEST = ROOT / "site" / "probe-manifest"
 LOCALES_DATA = ROOT / "site" / "src" / "_data" / "locales.js"
 EXPECTED_CODES = ("en", "zh-CN")
+EXPECTED_SWITCHES = {
+    "/": {"en": "/fkst-website/", "zh-CN": "/fkst-website/zh/"},
+    "/zh/": {"en": "/fkst-website/", "zh-CN": "/fkst-website/zh/"},
+    "/architecture.html": {
+        "en": "/fkst-website/architecture.html",
+        "zh-CN": "/fkst-website/zh/architecture.html",
+    },
+    "/zh/architecture.html": {
+        "en": "/fkst-website/architecture.html",
+        "zh-CN": "/fkst-website/zh/architecture.html",
+    },
+    "/doctrine.html": {
+        "en": "/fkst-website/doctrine.html",
+        "zh-CN": "/fkst-website/zh/doctrine.html",
+    },
+    "/zh/doctrine.html": {
+        "en": "/fkst-website/doctrine.html",
+        "zh-CN": "/fkst-website/zh/doctrine.html",
+    },
+}
 
 
 @dataclass
@@ -29,17 +49,21 @@ class LocaleScaffoldParser(HTMLParser):
         super().__init__()
         self.html_lang = ""
         self.switchers: list[dict[str, str]] = []
+        self.switcher_tags: list[str] = []
         self.options: list[LocaleOption] = []
         self._in_switcher = 0
+        self._switcher_tags: list[str] = []
         self._current_option: LocaleOption | None = None
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attr = {name: value or "" for name, value in attrs}
         if tag == "html":
             self.html_lang = attr.get("lang", "")
-        if tag == "div" and "data-locale-switcher" in attr:
+        if "data-locale-switcher" in attr:
             self.switchers.append(attr)
+            self.switcher_tags.append(tag)
             self._in_switcher += 1
+            self._switcher_tags.append(tag)
         if self._in_switcher and "data-locale-option" in attr:
             option = LocaleOption(tag=tag, attrs=attr)
             self.options.append(option)
@@ -48,7 +72,8 @@ class LocaleScaffoldParser(HTMLParser):
     def handle_endtag(self, tag: str) -> None:
         if self._current_option and tag == self._current_option.tag:
             self._current_option = None
-        if tag == "div" and self._in_switcher:
+        if self._switcher_tags and tag == self._switcher_tags[-1]:
+            self._switcher_tags.pop()
             self._in_switcher -= 1
 
     def handle_data(self, data: str) -> None:
@@ -150,6 +175,11 @@ def check_route(
     registry: dict[str, dict[str, str]],
     failures: list[str],
 ) -> None:
+    expected_switches = EXPECTED_SWITCHES.get(route)
+    if not expected_switches:
+        failures.append(f"{route}: missing expected locale switch contract")
+        return
+
     parser = parse_route(route, failures)
     if not parser:
         return
@@ -161,6 +191,8 @@ def check_route(
     label = parser.switchers[0].get("aria-label")
     if label != "Language":
         failures.append(f"{route}: expected language switcher aria-label 'Language', found {label!r}")
+    if parser.switcher_tags != ["nav"]:
+        failures.append(f"{route}: language switcher must render as a nav landmark, found {parser.switcher_tags!r}")
 
     options = {option.attrs.get("data-locale-option", ""): option for option in parser.options}
     codes = tuple(options)
@@ -193,6 +225,11 @@ def check_route(
         if code != current_code:
             if option.tag != "a":
                 failures.append(f"{route}: non-current locale {code} must render as a link")
+            expected_href = expected_switches.get(code)
+            if option.attrs.get("href") != expected_href:
+                failures.append(
+                    f"{route}: expected {code} href {expected_href!r}, found {option.attrs.get('href')!r}"
+                )
             if option.attrs.get("hreflang") != code:
                 failures.append(
                     f"{route}: expected {code} hreflang {code!r}, found {option.attrs.get('hreflang')!r}"
@@ -203,12 +240,30 @@ def check_route(
                 )
         elif option.tag != "span":
             failures.append(f"{route}: current locale {code} must render as non-link text")
+        elif "href" in option.attrs:
+            failures.append(f"{route}: current locale {code} must not have href")
+
+
+def check_manifest_contract(routes: list[str], failures: list[str]) -> None:
+    expected_routes = set(EXPECTED_SWITCHES)
+    found_routes = set(routes)
+    if len(routes) != len(found_routes):
+        failures.append(f"locale manifest contains duplicate routes: {routes!r}")
+
+    missing_routes = sorted(expected_routes - found_routes)
+    extra_routes = sorted(found_routes - expected_routes)
+    if missing_routes:
+        failures.append(f"locale manifest missing expected routes {missing_routes!r}")
+    if extra_routes:
+        failures.append(f"locale manifest contains unchecked routes {extra_routes!r}")
 
 
 def main() -> int:
     failures: list[str] = []
     registry = check_registry(failures)
-    for route in manifest_paths():
+    routes = manifest_paths()
+    check_manifest_contract(routes, failures)
+    for route in routes:
         check_route(route, registry, failures)
 
     if failures:
@@ -216,7 +271,7 @@ def main() -> int:
             print(f"fkst-website dept=site tag=fail LOCALE_SCAFFOLD {failure}")
         return 1
 
-    print(f"fkst-website dept=site tag=ok LOCALE_SCAFFOLD pages={len(manifest_paths())}")
+    print(f"fkst-website dept=site tag=ok LOCALE_SCAFFOLD pages={len(routes)}")
     return 0
 
 
