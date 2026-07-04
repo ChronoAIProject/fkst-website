@@ -12,13 +12,10 @@ nav:
     href: /zh/doctrine.html
   - label: fkst-substrate
     href: https://github.com/ChronoAIProject/fkst-substrate
-    external: true
   - label: fkst-packages
     href: https://github.com/ChronoAIProject/fkst-packages
-    external: true
   - label: fkst-website
     href: https://github.com/ChronoAIProject/fkst-website
-    external: true
 languageSwitch:
   - label: EN
     href: /
@@ -36,10 +33,14 @@ footerText: 本站由 fkst 自主流水线构建并维护。
     </p>
     <div class="repo-actions" aria-label="Repository links">
       <a class="primary-action" href="https://github.com/ChronoAIProject/fkst-substrate">
-        Engine
+        Engine{{ "https://github.com/ChronoAIProject/fkst-substrate" | externalLinkMarker | safe }}
       </a>
-      <a href="https://github.com/ChronoAIProject/fkst-packages">Packages</a>
-      <a href="https://github.com/ChronoAIProject/fkst-website">Website</a>
+      <a href="https://github.com/ChronoAIProject/fkst-packages">
+        Packages{{ "https://github.com/ChronoAIProject/fkst-packages" | externalLinkMarker | safe }}
+      </a>
+      <a href="https://github.com/ChronoAIProject/fkst-website">
+        Website{{ "https://github.com/ChronoAIProject/fkst-website" | externalLinkMarker | safe }}
+      </a>
     </div>
   </div>
 </section>
