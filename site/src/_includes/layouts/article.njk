@@ -2,8 +2,6 @@
 
 {% block content %}
 {% include "components/ArticleScrollProgress.njk" %}
-{# Source audit in shortcutActions.test.js keeps this inert scaffold at the current article shell boundary. #}
-{% include "components/DocsSidebarShortcutScaffold.njk" %}
 <section class="page-header article-header" aria-labelledby="page-title">
   {% if articleEyebrow %}
     <p class="eyebrow">{{ articleEyebrow }}</p>
@@ -18,12 +16,16 @@
   {% endif %}
 </section>
 
-<div class="page-content" data-article-scroll-content>
-{{ content | safe }}
+<div class="article-shell" data-article-shell data-docs-sidebar-shell data-docs-sidebar-open>
+  {% include "components/DocsSidebar.njk" %}
+  <div class="page-content" data-article-scroll-content data-docs-sidebar-content>
+  {{ content | safe }}
+  </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
     {{ super() }}
     <script src="{{ "/assets/js/article-scroll-progress.js" | url }}" defer data-article-scroll-progress-script></script>
+    <script src="{{ "/assets/js/docs-sidebar.js" | url }}" defer data-docs-sidebar-script></script>
 {% endblock %}
