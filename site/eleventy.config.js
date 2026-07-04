@@ -6,6 +6,7 @@ const {
   externalLinkMarker,
   shouldUseEleventyUrlFilter,
 } = require("./lib/externalLinks");
+const { renderHeadingAnchor } = require("./lib/headingAnchors");
 const { lastUpdatedMetadata } = require("./src/_includes/utils/last-updated");
 const { estimateReadingTime } = require("./src/_includes/utils/reading-time");
 
@@ -19,6 +20,9 @@ module.exports = function (eleventyConfig) {
   eleventyConfig.addFilter("shouldUseEleventyUrl", shouldUseEleventyUrlFilter);
   eleventyConfig.addFilter("lastUpdatedMetadata", lastUpdatedMetadata);
   eleventyConfig.addFilter("readingTime", estimateReadingTime);
+  eleventyConfig.addShortcode("headingAnchor", (id, label) => {
+    return renderHeadingAnchor({ id, label });
+  });
   eleventyConfig.addPassthroughCopy({ "src/assets": "assets" });
   eleventyConfig.addPassthroughCopy("probe-manifest");
   eleventyConfig.setLibrary("md", markdownLibrary);
