@@ -1,0 +1,38 @@
+<dialog
+  class="keyboard-shortcut-overlay"
+  data-keyboard-shortcut-overlay
+  aria-labelledby="keyboard-shortcut-overlay-title"
+  aria-describedby="keyboard-shortcut-overlay-summary"
+>
+  <section class="keyboard-shortcut-panel" data-keyboard-shortcut-panel>
+    <header class="keyboard-shortcut-header">
+      <div>
+        <p class="eyebrow">Keyboard help</p>
+        <h2 id="keyboard-shortcut-overlay-title">{{ keyboardShortcuts.heading }}</h2>
+      </div>
+      <button
+        class="keyboard-shortcut-close"
+        type="button"
+        data-keyboard-shortcut-close
+        aria-label="Close keyboard shortcut help"
+        disabled
+      >
+        &times;
+      </button>
+    </header>
+    <p id="keyboard-shortcut-overlay-summary" class="keyboard-shortcut-summary">
+      {{ keyboardShortcuts.summary }}
+    </p>
+    <dl class="keyboard-shortcut-list">
+      {% for shortcut in keyboardShortcuts.items %}
+        <div class="keyboard-shortcut-item" data-keyboard-shortcut="{{ shortcut.id }}">
+          <dt>
+            <kbd>{{ shortcut.keys }}</kbd>
+            <span>{{ shortcut.label }}</span>
+          </dt>
+          <dd>{{ shortcut.description }}</dd>
+        </div>
+      {% endfor %}
+    </dl>
+  </section>
+</dialog>

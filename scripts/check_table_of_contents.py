@@ -156,7 +156,7 @@ class TocPageParser(HTMLParser):
             }
             self._current_link_text = []
 
-        if not self._in_toc and tag in {"h2", "h3"}:
+        if self._page_content_depth and not self._in_toc and tag in {"h2", "h3"}:
             self._current_heading = {
                 "level": int(tag[1]),
                 "id": attr.get("id") or "",

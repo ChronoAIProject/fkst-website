@@ -49,6 +49,10 @@
     </main>
 
     <footer class="site-footer">
+      {% set lastUpdatedData = lastUpdated | lastUpdatedMetadata %}
+      {% if lastUpdatedData %}
+        <p class="footer-last-updated">Last updated: <time datetime="{{ lastUpdatedData.datetime }}" data-last-updated>{{ lastUpdatedData.label }}</time></p>
+      {% endif %}
       {% if footerHref and footerLabel %}
         {% if footerHref | shouldUseEleventyUrl %}
           <p><a href="{{ footerHref | url }}">{{ footerLabel }}</a></p>
@@ -61,6 +65,8 @@
     </footer>
 
     {% include "components/BackToTopButton.njk" %}
+    {% include "components/KeyboardShortcutHelpOverlay.njk" %}
     <script src="{{ "/assets/js/code-block-copy.js" | url }}" defer data-code-block-copy-script></script>
+    <script src="{{ "/assets/js/keyboard-shortcuts.js" | url }}" defer data-keyboard-shortcut-script></script>
   </body>
 </html>

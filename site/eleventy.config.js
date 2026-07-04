@@ -7,6 +7,7 @@ const {
   shouldUseEleventyUrlFilter,
 } = require("./lib/externalLinks");
 const { extractTocEntries } = require("./src/_includes/toc");
+const { lastUpdatedMetadata } = require("./src/_includes/utils/last-updated");
 const { estimateReadingTime } = require("./src/_includes/utils/reading-time");
 
 module.exports = function (eleventyConfig) {
@@ -17,6 +18,7 @@ module.exports = function (eleventyConfig) {
   eleventyConfig.addFilter("externalLinkMarker", externalLinkMarker);
   eleventyConfig.addFilter("externalLinkAttributes", externalLinkAttributes);
   eleventyConfig.addFilter("shouldUseEleventyUrl", shouldUseEleventyUrlFilter);
+  eleventyConfig.addFilter("lastUpdatedMetadata", lastUpdatedMetadata);
   eleventyConfig.addFilter("readingTime", estimateReadingTime);
   eleventyConfig.addFilter("tocEntries", extractTocEntries);
   eleventyConfig.addPassthroughCopy({ "src/assets": "assets" });
