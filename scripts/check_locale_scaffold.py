@@ -123,8 +123,10 @@ def read_supported_locales(failures: list[str]) -> list[dict[str, str]]:
     return data
 
 
-def check_registry(failures: list[str]) -> dict[str, dict[str, str]]:
-    locales = read_supported_locales(failures)
+def validate_registry(
+    locales: list[object],
+    failures: list[str],
+) -> dict[str, dict[str, str]]:
     registry: dict[str, dict[str, str]] = {}
     for entry in locales:
         if not isinstance(entry, dict):
@@ -159,6 +161,10 @@ def check_registry(failures: list[str]) -> dict[str, dict[str, str]]:
     return registry
 
 
+def check_registry(failures: list[str]) -> dict[str, dict[str, str]]:
+    return validate_registry(read_supported_locales(failures), failures)
+
+
 def parse_route(route: str, failures: list[str]) -> LocaleScaffoldParser | None:
     path = output_path(route)
     if not path.is_file():
@@ -170,18 +176,22 @@ def parse_route(route: str, failures: list[str]) -> LocaleScaffoldParser | None:
     return parser
 
 
-def check_route(
+def parse_html(html: str) -> LocaleScaffoldParser:
+    parser = LocaleScaffoldParser()
+    parser.feed(html)
+    return parser
+
+
+def validate_route_parser(
     route: str,
     registry: dict[str, dict[str, str]],
+    parser: LocaleScaffoldParser,
     failures: list[str],
+    expected_switches_by_route: dict[str, dict[str, str]] = EXPECTED_SWITCHES,
 ) -> None:
-    expected_switches = EXPECTED_SWITCHES.get(route)
+    expected_switches = expected_switches_by_route.get(route)
     if not expected_switches:
         failures.append(f"{route}: missing expected locale switch contract")
-        return
-
-    parser = parse_route(route, failures)
-    if not parser:
         return
 
     if len(parser.switchers) != 1:
@@ -244,8 +254,24 @@ def check_route(
             failures.append(f"{route}: current locale {code} must not have href")
 
 
-def check_manifest_contract(routes: list[str], failures: list[str]) -> None:
-    expected_routes = set(EXPECTED_SWITCHES)
+def check_route(
+    route: str,
+    registry: dict[str, dict[str, str]],
+    failures: list[str],
+) -> None:
+    parser = parse_route(route, failures)
+    if not parser:
+        return
+
+    validate_route_parser(route, registry, parser, failures)
+
+
+def validate_manifest_contract(
+    routes: list[str],
+    failures: list[str],
+    expected_switches_by_route: dict[str, dict[str, str]] = EXPECTED_SWITCHES,
+) -> None:
+    expected_routes = set(expected_switches_by_route)
     found_routes = set(routes)
     if len(routes) != len(found_routes):
         failures.append(f"locale manifest contains duplicate routes: {routes!r}")
@@ -256,6 +282,10 @@ def check_manifest_contract(routes: list[str], failures: list[str]) -> None:
         failures.append(f"locale manifest missing expected routes {missing_routes!r}")
     if extra_routes:
         failures.append(f"locale manifest contains unchecked routes {extra_routes!r}")
+
+
+def check_manifest_contract(routes: list[str], failures: list[str]) -> None:
+    validate_manifest_contract(routes, failures)
 
 
 def main() -> int:
