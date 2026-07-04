@@ -6,7 +6,6 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const {
-  countReadableWords,
   estimateReadingTime
 } = require("../site/src/_includes/utils/reading-time");
 
@@ -21,44 +20,6 @@ const ARTICLE_PATHS = [
 
 function stripTags(html) {
   return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-}
-
-function assertUtilityShape() {
-  assert.deepEqual(estimateReadingTime(""), {
-    minutes: 0,
-    label: "Less than 1 min read",
-    wordCount: 0
-  });
-
-  const estimate = estimateReadingTime("word ".repeat(201), {
-    wordsPerMinute: 200
-  });
-  assert.equal(estimate.minutes, 2);
-  assert.equal(estimate.label, "2 min read");
-  assert.equal(estimate.wordCount, 201);
-
-  assert.equal(
-    countReadableWords("<p>Hello <strong>reader</strong>.</p>"),
-    2,
-    "HTML tags must not inflate readable word counts"
-  );
-  assert.equal(
-    countReadableWords("<p>One&nbsp;two &amp; three.</p>"),
-    3,
-    "HTML entities must normalize into readable text or spacing"
-  );
-  assert.equal(
-    countReadableWords(
-      "<p>Visible words</p><script>hidden words here</script><style>.hidden { color: red; }</style>"
-    ),
-    2,
-    "script and style blocks must not inflate readable word counts"
-  );
-  assert.equal(
-    countReadableWords("<p>可靠投递 keeps events durable.</p>"),
-    7,
-    "CJK-heavy prose must count readable CJK characters"
-  );
 }
 
 function extractRequiredMatch(html, pattern, message) {
@@ -121,8 +82,6 @@ function assertArticleMarkup(relativePath) {
 }
 
 function main() {
-  assertUtilityShape();
-
   for (const articlePath of ARTICLE_PATHS) {
     assertArticleMarkup(articlePath);
   }

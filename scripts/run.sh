@@ -105,6 +105,7 @@ cmd_check() {
 }
 
 site_build_and_smoke() {
+  node "$ROOT/scripts/check_reading_time_unit.js"
   (cd "$ROOT/site" && npm run build)
   python3 -B "$ROOT/scripts/check_back_to_top.py"
   python3 -B "$ROOT/scripts/check_code_block_copy.py"
@@ -113,6 +114,14 @@ site_build_and_smoke() {
 
 cmd_test_affected() {
   site_build_and_smoke
+}
+
+cmd_test() {
+  site_build_and_smoke
+  exec "$shared/scripts/run.sh" host \
+    --host-root "$ROOT" \
+    --local-packages "$LOCAL_PACKAGES" \
+    -- test "$@"
 }
 
 case "${1:-}" in
@@ -133,7 +142,8 @@ shared="$(ensure_fkst_packages_checkout "$pin")"
 
 case "$1" in
   check) shift; cmd_check "$@" ;;
-  test|supervise) exec "$shared/scripts/run.sh" host \
+  test) shift; cmd_test "$@" ;;
+  supervise) exec "$shared/scripts/run.sh" host \
     --host-root "$ROOT" \
     --local-packages "$LOCAL_PACKAGES" \
     -- "$@" ;;
