@@ -117,6 +117,48 @@ a:focus-visible {
   color: var(--text);
 }
 
+.header-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  justify-content: end;
+}
+
+.print-page-control {
+  display: inline-flex;
+}
+
+.print-page-button {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 750;
+  min-height: 34px;
+  padding: 6px 10px;
+}
+
+.print-page-button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.print-page-button:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.print-page-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .hero {
   align-items: center;
   display: grid;
@@ -479,5 +521,171 @@ h2 {
   .back-to-top-button {
     bottom: max(18px, env(safe-area-inset-bottom));
     right: max(16px, env(safe-area-inset-right));
+  }
+}
+
+@media print {
+  @page {
+    margin: 16mm;
+  }
+
+  :root {
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --text: #111111;
+    --muted: #333333;
+    --line: #c8c8c8;
+    --accent: #111111;
+    --accent-strong: #111111;
+    --accent-soft: #ffffff;
+    --focus: #111111;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #111111 !important;
+    font-size: 11pt;
+    min-height: auto;
+  }
+
+  .site-header,
+  .site-footer,
+  .back-to-top-button,
+  .code-block-copy-button,
+  .code-block-copy-status,
+  .repo-actions {
+    display: none !important;
+  }
+
+  main,
+  .hero,
+  .features,
+  .page-header,
+  .page-content {
+    margin: 0;
+    max-width: none;
+    padding: 0;
+    width: 100%;
+  }
+
+  .hero {
+    display: block;
+    min-height: auto;
+  }
+
+  .hero-copy,
+  .hero-text,
+  .page-intro {
+    max-width: none;
+  }
+
+  h1 {
+    font-size: 28pt;
+    line-height: 1.12;
+    margin-bottom: 12pt;
+  }
+
+  h2 {
+    font-size: 18pt;
+    line-height: 1.18;
+    margin: 18pt 0 8pt;
+  }
+
+  h3 {
+    break-after: avoid;
+    font-size: 13pt;
+    margin: 12pt 0 6pt;
+  }
+
+  h1,
+  h2,
+  h3 {
+    break-after: avoid;
+    color: #111111;
+    page-break-after: avoid;
+  }
+
+  p,
+  li {
+    orphans: 3;
+    widows: 3;
+  }
+
+  a {
+    color: #111111;
+    text-decoration: underline;
+    text-decoration-thickness: 0.08em;
+  }
+
+  main a[href]:not([href^="#"])::after {
+    content: " (" attr(href) ")";
+    font-size: 9pt;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .eyebrow,
+  .article-meta,
+  .page-intro,
+  .hero-text,
+  .content-section p,
+  .content-section ul,
+  .feature-card p {
+    color: #333333 !important;
+  }
+
+  .features {
+    padding-top: 12pt;
+  }
+
+  .feature-grid {
+    display: block;
+  }
+
+  .feature-card {
+    background: transparent;
+    border: 1px solid #c8c8c8;
+    break-inside: avoid;
+    margin-bottom: 12pt;
+    min-height: 0;
+    page-break-inside: avoid;
+    padding: 10pt;
+  }
+
+  .content-section {
+    border-top: 1px solid #c8c8c8;
+    display: block;
+    padding-top: 12pt;
+  }
+
+  .code-block-copy {
+    break-inside: avoid;
+    margin-block: 10pt;
+    page-break-inside: avoid;
+  }
+
+  .code-block-copy pre,
+  pre {
+    background: #f7f7f7 !important;
+    border: 1px solid #c8c8c8;
+    color: #111111 !important;
+    overflow: visible;
+    padding: 10pt;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .code-block-copy code,
+  code {
+    color: #111111 !important;
+    font-size: 9.5pt;
   }
 }
