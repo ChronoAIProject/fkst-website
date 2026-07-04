@@ -1,0 +1,29 @@
+<button
+  class="print-page-button"
+  type="button"
+  data-print-page
+  data-print-page-target="native-print"
+  aria-label="{% if lang == 'zh-Hans' %}打印此页面{% else %}Print this page{% endif %}"
+>
+  <span aria-hidden="true">{% if lang == 'zh-Hans' %}打印{% else %}Print{% endif %}</span>
+</button>
+<script data-print-page-script>
+  (() => {
+    const buttons = document.querySelectorAll("[data-print-page]");
+    if (!buttons.length || typeof window.print !== "function") {
+      return;
+    }
+
+    const controller = window.fkstPrintPage || {};
+    controller.openPrintView = controller.openPrintView || (() => {
+      window.print();
+    });
+    window.fkstPrintPage = controller;
+
+    buttons.forEach((button) => {
+      button.addEventListener("click", () => {
+        controller.openPrintView({ source: button });
+      });
+    });
+  })();
+</script>

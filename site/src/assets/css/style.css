@@ -105,6 +105,40 @@ a:focus-visible {
   color: var(--text);
 }
 
+.header-actions {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: end;
+  white-space: nowrap;
+}
+
+.print-page-button {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 0.94rem;
+  font-weight: 650;
+  min-height: 34px;
+  padding: 5px 10px;
+  text-decoration: none;
+}
+
+.print-page-button:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.print-page-button:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 4px;
+}
+
 .language-switch {
   align-items: center;
   display: flex;
@@ -357,6 +391,36 @@ h2 {
 @media (prefers-reduced-motion: reduce) {
   .back-to-top-button {
     transition: none;
+  }
+}
+
+@media print {
+  :root {
+    color-scheme: light;
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --text: #000000;
+    --muted: #333333;
+    --line: #999999;
+  }
+
+  html,
+  body {
+    background: #ffffff;
+  }
+
+  .site-header,
+  .site-footer,
+  .back-to-top-button {
+    display: none !important;
+  }
+
+  .hero,
+  .features,
+  .page-header,
+  .page-content {
+    max-width: none;
+    padding-inline: 0;
   }
 }
 

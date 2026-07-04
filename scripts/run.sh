@@ -108,6 +108,7 @@ site_build_and_smoke() {
   (cd "$ROOT/site" && npm run build)
   python3 -B "$ROOT/scripts/check_back_to_top.py"
   node "$ROOT/scripts/check_reading_time.js"
+  python3 -B "$ROOT/scripts/check_print_page_button.py"
 }
 
 cmd_test_affected() {
