@@ -47,7 +47,12 @@ function shouldUseEleventyUrlFilter(href) {
   }
 
   const target = href.trim();
-  return Boolean(target) && !target.startsWith("#") && !/^[A-Za-z][A-Za-z0-9+.-]*:/.test(target);
+  return (
+    Boolean(target) &&
+    !target.startsWith("#") &&
+    !target.startsWith("//") &&
+    !/^[A-Za-z][A-Za-z0-9+.-]*:/.test(target)
+  );
 }
 
 function renderExternalLinkMarker() {
@@ -59,6 +64,50 @@ function renderExternalLinkMarker() {
 
 function externalLinkMarker(href, siteUrl = DEFAULT_SITE_URL) {
   return isExternalLinkTarget(href, siteUrl) ? renderExternalLinkMarker() : "";
+}
+
+function escapeHtmlAttribute(value) {
+  return String(value).replace(/[&<>"']/g, (char) => {
+    switch (char) {
+      case "&":
+        return "&amp;";
+      case "<":
+        return "&lt;";
+      case ">":
+        return "&gt;";
+      case '"':
+        return "&quot;";
+      case "'":
+        return "&#39;";
+      default:
+        return char;
+    }
+  });
+}
+
+function normalizeClassNames(className) {
+  if (typeof className !== "string") {
+    return [];
+  }
+  return className.trim().split(/\s+/).filter(Boolean);
+}
+
+function externalLinkAttributes(href, className = "", siteUrl = DEFAULT_SITE_URL) {
+  const classes = normalizeClassNames(className);
+  const isExternal = isExternalLinkTarget(href, siteUrl);
+  if (isExternal && !classes.includes("external-link")) {
+    classes.push("external-link");
+  }
+
+  const attributes = [];
+  if (classes.length) {
+    attributes.push(`class="${escapeHtmlAttribute(classes.join(" "))}"`);
+  }
+  if (isExternal) {
+    attributes.push('data-external-link=""');
+  }
+
+  return attributes.length ? ` ${attributes.join(" ")}` : "";
 }
 
 function addExternalLinkMarkers(markdownLibrary, siteUrl = DEFAULT_SITE_URL) {
@@ -100,6 +149,7 @@ function addExternalLinkMarkers(markdownLibrary, siteUrl = DEFAULT_SITE_URL) {
 module.exports = {
   DEFAULT_SITE_URL,
   addExternalLinkMarkers,
+  externalLinkAttributes,
   externalLinkMarker,
   isExternalLinkTarget,
   parseHttpLinkTarget,
