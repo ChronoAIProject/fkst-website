@@ -1,0 +1,221 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" role="img" aria-labelledby="title desc">
+  <title id="title">fkst autonomous company runtime workflow</title>
+  <desc id="desc">Incoming work signals move through durable queues, package-defined departments, consensus gates, and merge or publication outputs.</desc>
+  <style>
+    svg {
+      --hero-bg: #f8f7f2;
+      --hero-surface: #ffffff;
+      --hero-text: #161a1d;
+      --hero-muted: #53606a;
+      --hero-line: #d9ded8;
+      --hero-accent: #0f766e;
+      --hero-accent-strong: #134e4a;
+      --hero-accent-soft: #d9f0eb;
+      background: var(--hero-bg);
+      color: var(--hero-text);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      svg {
+        --hero-bg: #141619;
+        --hero-surface: #1d2226;
+        --hero-text: #f2f5f3;
+        --hero-muted: #b0bbb7;
+        --hero-line: #35403b;
+        --hero-accent: #5eead4;
+        --hero-accent-strong: #99f6e4;
+        --hero-accent-soft: #173d39;
+      }
+    }
+
+    .background {
+      fill: var(--hero-bg);
+    }
+
+    .panel,
+    .node,
+    .signal,
+    .output {
+      fill: var(--hero-surface);
+      stroke: var(--hero-line);
+      stroke-width: 2;
+    }
+
+    .queue {
+      fill: color-mix(in srgb, var(--hero-accent-soft) 56%, var(--hero-surface));
+      stroke: color-mix(in srgb, var(--hero-accent) 40%, var(--hero-line));
+      stroke-width: 2;
+    }
+
+    .gate {
+      fill: var(--hero-accent-soft);
+      stroke: var(--hero-accent);
+      stroke-width: 2.5;
+    }
+
+    .path,
+    .rail {
+      fill: none;
+      stroke: var(--hero-line);
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 2.5;
+    }
+
+    .path {
+      stroke: color-mix(in srgb, var(--hero-accent) 56%, var(--hero-line));
+    }
+
+    .accent-line {
+      stroke: var(--hero-accent);
+      stroke-width: 3;
+    }
+
+    .text {
+      fill: var(--hero-text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .small-text {
+      fill: var(--hero-muted);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 13px;
+      font-weight: 650;
+      letter-spacing: 0;
+    }
+
+    .mono {
+      fill: var(--hero-muted);
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0;
+    }
+
+    .marker {
+      fill: var(--hero-accent);
+    }
+
+    .strong {
+      fill: var(--hero-accent-strong);
+    }
+
+    .shadow {
+      filter: url(#soft-shadow);
+    }
+  </style>
+
+  <defs>
+    <filter id="soft-shadow" x="-10%" y="-12%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#141619" flood-opacity="0.12"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8.8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--hero-accent)"/>
+    </marker>
+  </defs>
+
+  <rect class="background" width="1200" height="600"/>
+
+  <g opacity="0.76">
+    <path class="rail" d="M122 116H1078"/>
+    <path class="rail" d="M122 484H1078"/>
+    <path class="rail" d="M168 116V484"/>
+    <path class="rail" d="M1032 116V484"/>
+    <path class="rail" d="M386 116V484"/>
+    <path class="rail" d="M792 116V484"/>
+  </g>
+
+  <g class="shadow">
+    <rect class="panel" x="150" y="132" width="900" height="336" rx="18"/>
+    <rect class="queue" x="342" y="168" width="102" height="264" rx="12"/>
+    <rect class="queue" x="756" y="168" width="102" height="264" rx="12"/>
+  </g>
+
+  <g aria-label="incoming durable work signals">
+    <rect class="signal shadow" x="126" y="186" width="154" height="58" rx="10"/>
+    <circle class="marker" cx="154" cy="215" r="8"/>
+    <text class="text" x="176" y="211">Issue</text>
+    <text class="mono" x="176" y="229">github.event</text>
+
+    <rect class="signal shadow" x="126" y="271" width="154" height="58" rx="10"/>
+    <circle class="marker" cx="154" cy="300" r="8"/>
+    <text class="text" x="176" y="296">Signal</text>
+    <text class="mono" x="176" y="314">marker.fact</text>
+
+    <rect class="signal shadow" x="126" y="356" width="154" height="58" rx="10"/>
+    <circle class="marker" cx="154" cy="385" r="8"/>
+    <text class="text" x="176" y="381">Review</text>
+    <text class="mono" x="176" y="399">comment.feed</text>
+  </g>
+
+  <g aria-label="left queue lane">
+    <text class="small-text" x="370" y="194">durable</text>
+    <text class="small-text" x="374" y="212">queue</text>
+    <rect class="panel" x="366" y="240" width="54" height="26" rx="6"/>
+    <rect class="panel" x="366" y="282" width="54" height="26" rx="6"/>
+    <rect class="panel" x="366" y="324" width="54" height="26" rx="6"/>
+    <path class="accent-line" d="M393 372v36" stroke-linecap="round"/>
+  </g>
+
+  <g aria-label="package-defined departments">
+    <rect class="node shadow" x="500" y="158" width="160" height="72" rx="12"/>
+    <text class="text" x="528" y="190">Intake</text>
+    <text class="mono" x="528" y="210">pkg.department</text>
+
+    <rect class="node shadow" x="486" y="264" width="188" height="72" rx="12"/>
+    <text class="text" x="526" y="296">Builder</text>
+    <text class="mono" x="526" y="316">pkg.workflow</text>
+
+    <rect class="node shadow" x="500" y="370" width="160" height="72" rx="12"/>
+    <text class="text" x="526" y="402">Reviewer</text>
+    <text class="mono" x="526" y="422">pkg.consensus</text>
+  </g>
+
+  <g aria-label="consensus gates">
+    <text class="small-text" x="782" y="194">consensus</text>
+    <text class="small-text" x="794" y="212">gates</text>
+    <path class="gate shadow" d="M808 244l34 30-34 30-34-30z"/>
+    <path class="gate shadow" d="M808 330l34 30-34 30-34-30z"/>
+    <path class="accent-line" d="M784 274h48M784 360h48" stroke-linecap="round"/>
+  </g>
+
+  <g aria-label="merge and publication outputs">
+    <rect class="output shadow" x="920" y="213" width="154" height="68" rx="12"/>
+    <text class="text" x="960" y="244">Merge</text>
+    <text class="mono" x="960" y="264">linear.history</text>
+
+    <rect class="output shadow" x="920" y="319" width="154" height="68" rx="12"/>
+    <text class="text" x="948" y="350">Publish</text>
+    <text class="mono" x="948" y="370">site.artifact</text>
+  </g>
+
+  <g aria-label="explicit directional paths">
+    <path class="path" d="M280 215C302 215 314 216 342 216" marker-end="url(#arrow)"/>
+    <path class="path" d="M280 300C302 300 314 300 342 300" marker-end="url(#arrow)"/>
+    <path class="path" d="M280 385C302 385 314 384 342 384" marker-end="url(#arrow)"/>
+
+    <path class="path" d="M444 216C468 204 474 194 500 194" marker-end="url(#arrow)"/>
+    <path class="path" d="M444 300H486" marker-end="url(#arrow)"/>
+    <path class="path" d="M444 384C468 396 474 406 500 406" marker-end="url(#arrow)"/>
+
+    <path class="path" d="M660 194C708 194 718 246 774 274" marker-end="url(#arrow)"/>
+    <path class="path" d="M674 300C714 300 724 320 774 360" marker-end="url(#arrow)"/>
+    <path class="path" d="M660 406C704 406 722 384 774 360" marker-end="url(#arrow)"/>
+
+    <path class="path" d="M842 274C874 260 890 247 920 247" marker-end="url(#arrow)"/>
+    <path class="path" d="M842 360C874 360 890 353 920 353" marker-end="url(#arrow)"/>
+  </g>
+
+  <g aria-label="auditable state markers">
+    <rect class="panel" x="466" y="108" width="270" height="36" rx="8"/>
+    <circle class="strong" cx="488" cy="126" r="5"/>
+    <text class="mono" x="504" y="130">marker-as-fact records every handoff</text>
+
+    <rect class="panel" x="466" y="456" width="270" height="36" rx="8"/>
+    <circle class="strong" cx="488" cy="474" r="5"/>
+    <text class="mono" x="504" y="478">bounded payloads carry source_ref</text>
+  </g>
+</svg>
