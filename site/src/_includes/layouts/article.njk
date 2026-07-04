@@ -2,6 +2,8 @@
 
 {% block content %}
 {% include "components/ArticleScrollProgress.njk" %}
+{# Source audit in shortcutActions.test.js keeps this inert scaffold at the current article shell boundary. #}
+{% include "components/DocsSidebarShortcutScaffold.njk" %}
 <section class="page-header article-header" aria-labelledby="page-title">
   {% if articleEyebrow %}
     <p class="eyebrow">{{ articleEyebrow }}</p>
