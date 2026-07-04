@@ -207,6 +207,56 @@ function assertIdle(wrapper) {
   assert.equal(wrapper.getAttribute("data-copy-state"), null);
 }
 
+async function testFencedWrapperCopiesExactDataAttributeText() {
+  const source = "const value = \"<&>\";\nconsole.log('copy & paste');\n";
+  const { calls, document, errors } = createHarness([
+    codeWrapper(source, {
+      codeText: "rendered code text must not be copied\n",
+      language: "js",
+      info: "js title=\"clipboard fixture\"",
+      kind: "fence"
+    })
+  ]);
+  const wrapper = document.querySelector("[data-code-block-copy]");
+  const button = getButton(wrapper);
+
+  assert.equal(button.disabled, false);
+  assert.equal(button.hidden, false);
+
+  await clickAndFlush(button);
+
+  assertNoClientErrors(errors);
+  assert.deepEqual(calls.writeText, [source]);
+  assert.equal(calls.writeText[0].endsWith("\n"), true);
+  assert.equal(calls.writeText[0].includes("<&>"), true);
+  assert.equal(calls.writeText[0].includes("rendered code text must not be copied"), false);
+  assert.deepEqual(calls.execCommand, []);
+  assertCopied(wrapper);
+}
+
+async function testIndentedWrapperWithEmptyMetadataCopiesExactSourceText() {
+  const source = "    printf 'indented & exact'\n    printf \"second line\"\n";
+  const { calls, document, errors } = createHarness([
+    codeWrapper(source, {
+      language: "",
+      info: "",
+      kind: "code_block"
+    })
+  ]);
+  const wrapper = document.querySelector("[data-code-block-copy]");
+  const button = getButton(wrapper);
+
+  assert.equal(button.disabled, false);
+  assert.equal(button.hidden, false);
+
+  await clickAndFlush(button);
+
+  assertNoClientErrors(errors);
+  assert.deepEqual(calls.writeText, [source]);
+  assert.deepEqual(calls.execCommand, []);
+  assertCopied(wrapper);
+}
+
 async function testCopiesOnlyClickedBlock() {
   const { calls, document, errors } = createHarness([
     codeWrapper("first block\n"),
@@ -222,6 +272,7 @@ async function testCopiesOnlyClickedBlock() {
   assertNoClientErrors(errors);
   assert.deepEqual(calls.writeText, ["second block\n"]);
   assert.equal(calls.writeText[0].includes("Copy"), false);
+  assert.equal(calls.writeText[0].includes("first block"), false);
   assert.equal(calls.writeText[0].includes("status text must not be copied"), false);
   assert.equal(calls.writeText[0].includes("nested DOM code text must not be copied"), false);
   assert.equal(calls.execCommand.length, 0);
@@ -263,6 +314,26 @@ async function testFallbackWhenWriteTextUnavailable() {
     command: "copy",
     text: "fallback without writeText\n"
   }]);
+  assertCopied(wrapper);
+}
+
+async function testFallbackWhenNavigatorClipboardMissing() {
+  const { calls, document, errors } = createHarness([
+    codeWrapper("fallback without navigator.clipboard\n")
+  ], {
+    clipboard: "missing"
+  });
+  const wrapper = document.querySelector("[data-code-block-copy]");
+
+  await clickAndFlush(getButton(wrapper));
+
+  assertNoClientErrors(errors);
+  assert.deepEqual(calls.writeText, []);
+  assert.deepEqual(calls.execCommand, [{
+    command: "copy",
+    text: "fallback without navigator.clipboard\n"
+  }]);
+  assert.equal(document.querySelectorAll("textarea").length, 0);
   assertCopied(wrapper);
 }
 
@@ -396,9 +467,12 @@ function testDoesNotScrapePreCodeSource() {
 
 async function main() {
   const tests = [
+    testFencedWrapperCopiesExactDataAttributeText,
+    testIndentedWrapperWithEmptyMetadataCopiesExactSourceText,
     testCopiesOnlyClickedBlock,
     testSuccessfulAsyncClipboardResets,
     testFallbackWhenWriteTextUnavailable,
+    testFallbackWhenNavigatorClipboardMissing,
     testFallbackAfterAsyncRejects,
     testFailureWhenAllCopyPathsFail,
     testIncompleteWrappersOnlyActivateWithSourceContract,
