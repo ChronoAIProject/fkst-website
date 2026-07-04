@@ -28,7 +28,7 @@
       </nav>
       <div class="header-actions">
         {% if localeAlternates %}
-          <div class="language-switch" aria-label="Language" data-locale-switcher>
+          <nav class="language-switch" aria-label="Language" data-locale-switcher>
             {% for locale in locales.supportedLocales %}
               {% set alternateHref = localeAlternates[locale.code] %}
               {% if locale.code == localeCode %}
@@ -55,7 +55,7 @@
                 {% endif %}
               {% endif %}
             {% endfor %}
-          </div>
+          </nav>
         {% endif %}
         {% include "components/PrintPageButton.njk" %}
       </div>
