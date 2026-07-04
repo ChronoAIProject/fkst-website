@@ -4,46 +4,50 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const vm = require("node:vm");
 
 const { createPrintBrowserHarness } = require("./browser_behavior_harness");
 
 const ROOT = path.resolve(__dirname, "..");
 const HOME_OUTPUT = path.join(ROOT, "site", "_site", "index.html");
+const PRINT_SCRIPT_OUTPUT = path.join(ROOT, "site", "_site", "assets", "js", "print-page-button.js");
+const PRINT_SCRIPT_SOURCE = path.join(ROOT, "site", "src", "assets", "js", "print-page-button.js");
+const { activatePrintPageButton } = require(PRINT_SCRIPT_SOURCE);
 
-function extractPrintScript(html) {
+function assertRenderedScriptReference(html) {
   const matches = [
-    ...html.matchAll(/<script\b(?=[^>]*\bdata-print-page-script\b)[^>]*>([\s\S]*?)<\/script>/g),
+    ...html.matchAll(/<script\b(?=[^>]*\bdata-print-page-script\b)([^>]*)>([\s\S]*?)<\/script>/g),
   ];
   assert.equal(matches.length, 1, "expected exactly one rendered print activation script");
-  return matches[0][1];
+  const [, attrs, body] = matches[0];
+  const srcMatch = attrs.match(/\bsrc="([^"]+)"/);
+
+  assert.ok(srcMatch, "rendered print activation script should reference a script asset");
+  assert.ok(
+    srcMatch[1].endsWith("/assets/js/print-page-button.js"),
+    `unexpected print activation script src: ${srcMatch[1]}`
+  );
+  assert.equal(body.trim(), "", "rendered print activation script should not contain inline code");
+  assert.ok(fs.existsSync(PRINT_SCRIPT_OUTPUT), "expected built print activation script asset");
 }
 
-function runPrintScript(script, harness) {
-  const context = vm.createContext({
-    HTMLButtonElement: harness.HTMLButtonElement,
-    document: harness.document,
-    window: harness.window,
-  });
-  vm.runInContext(script, context, {
-    filename: "PrintPageButton.njk:inline-script",
-  });
+function runPrintScript(harness) {
+  return activatePrintPageButton(harness.window);
 }
 
-function activatedHarness(script, options = {}) {
+function activatedHarness(options = {}) {
   const harness = createPrintBrowserHarness(options);
-  runPrintScript(script, harness);
+  runPrintScript(harness);
   return harness;
 }
 
-function assertProgressiveEnhancement(script) {
+function assertProgressiveEnhancement() {
   const harness = createPrintBrowserHarness({
     printAvailable: true,
     mediaMode: "event",
   });
 
   assert.equal(harness.button.disabled, true, "button should start disabled before activation");
-  runPrintScript(script, harness);
+  assert.equal(runPrintScript(harness), true);
   assert.equal(harness.button.disabled, false, "button should enable when window.print is available");
   assert.equal(
     typeof harness.window.fkstPrintPage.openPrintView,
@@ -54,21 +58,22 @@ function assertProgressiveEnhancement(script) {
   assert.equal(harness.window.eventListenerCount("afterprint"), 1);
 }
 
-function assertUnavailablePrint(script) {
+function assertUnavailablePrint() {
   const harness = createPrintBrowserHarness({
     printAvailable: false,
     mediaMode: "event",
   });
 
-  assert.doesNotThrow(() => runPrintScript(script, harness));
+  assert.doesNotThrow(() => runPrintScript(harness));
+  assert.equal(runPrintScript(harness), false);
   assert.equal(harness.button.disabled, true, "button should stay disabled without window.print");
   assert.equal(harness.window.fkstPrintPage, undefined);
   assert.equal(harness.window.eventListenerCount("beforeprint"), 0);
   assert.equal(harness.window.eventListenerCount("afterprint"), 0);
 }
 
-function assertClickPrintFlow(script) {
-  const harness = activatedHarness(script, {
+function assertClickPrintFlow() {
+  const harness = activatedHarness({
     printAvailable: true,
     mediaMode: "event",
   });
@@ -114,8 +119,8 @@ function assertClickPrintFlow(script) {
   );
 }
 
-function assertPrintEvents(script) {
-  const harness = activatedHarness(script, {
+function assertPrintEvents() {
+  const harness = activatedHarness({
     printAvailable: true,
     mediaMode: "event",
   });
@@ -127,8 +132,8 @@ function assertPrintEvents(script) {
   assert.equal(harness.root.hasAttribute("data-printing"), false);
 }
 
-function assertPrintMediaSync(script, mediaMode) {
-  const harness = activatedHarness(script, {
+function assertPrintMediaSync(mediaMode) {
+  const harness = activatedHarness({
     printAvailable: true,
     mediaMode,
   });
@@ -151,14 +156,14 @@ function assertPrintMediaSync(script, mediaMode) {
 
 function main() {
   const html = fs.readFileSync(HOME_OUTPUT, "utf8");
-  const script = extractPrintScript(html);
+  assertRenderedScriptReference(html);
 
-  assertProgressiveEnhancement(script);
-  assertUnavailablePrint(script);
-  assertClickPrintFlow(script);
-  assertPrintEvents(script);
-  assertPrintMediaSync(script, "event");
-  assertPrintMediaSync(script, "legacy");
+  assertProgressiveEnhancement();
+  assertUnavailablePrint();
+  assertClickPrintFlow();
+  assertPrintEvents();
+  assertPrintMediaSync("event");
+  assertPrintMediaSync("legacy");
 
   console.log("fkst-website dept=site tag=ok PRINT_PAGE_BUTTON_BEHAVIOR cases=6");
 }

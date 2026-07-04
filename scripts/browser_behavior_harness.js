@@ -210,6 +210,7 @@ function createPrintBrowserHarness(options = {}) {
 
   window.window = window;
   window.document = document;
+  window.HTMLButtonElement = FakeButtonElement;
   window.setTimeout = timers.setTimeout;
   window.clearTimeout = timers.clearTimeout;
 

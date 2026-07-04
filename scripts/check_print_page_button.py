@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SITE_DIR = ROOT / "site" / "_site"
 MANIFEST = ROOT / "site" / "probe-manifest"
 STYLE_OUTPUT = SITE_DIR / "assets" / "css" / "style.css"
+SCRIPT_OUTPUT = SITE_DIR / "assets" / "js" / "print-page-button.js"
 
 
 class PrintPageParser(HTMLParser):
@@ -19,6 +20,7 @@ class PrintPageParser(HTMLParser):
         self.html_lang = ""
         self.button_count = 0
         self.script_count = 0
+        self.script_sources: list[str] = []
         self.control_count = 0
         self.header_control_count = 0
         self.header_button_count = 0
@@ -50,6 +52,7 @@ class PrintPageParser(HTMLParser):
                 self.disabled_buttons += 1
         if tag == "script" and "data-print-page-script" in attr:
             self.script_count += 1
+            self.script_sources.append(attr.get("src", ""))
 
     def handle_endtag(self, tag: str) -> None:
         if tag == "header":
@@ -130,6 +133,12 @@ def check_page(route: str, failures: list[str]) -> None:
         failures.append(f"{route}: expected 1 header print button, found {parser.header_button_count}")
     if parser.script_count != 1:
         failures.append(f"{route}: expected 1 print activation script, found {parser.script_count}")
+    if len(parser.script_sources) == 1 and not parser.script_sources[0].endswith(
+        "/assets/js/print-page-button.js"
+    ):
+        failures.append(
+            f"{route}: unexpected print activation script source {parser.script_sources[0]!r}"
+        )
     if parser.button_labels != [expected_label]:
         failures.append(f"{route}: expected visible label {expected_label!r}, found {parser.button_labels!r}")
     if parser.aria_labels != [expected_aria]:
@@ -140,18 +149,28 @@ def check_page(route: str, failures: list[str]) -> None:
         failures.append(f"{route}: built print button must start disabled until client activation")
 
     page = compact(html)
+    if "<script" in page and "data-print-page-script" in page and "</script>" not in page:
+        failures.append(f"{route}: print activation script must be a complete script tag")
+
+
+def check_script(failures: list[str]) -> None:
+    if not SCRIPT_OUTPUT.is_file():
+        failures.append(f"missing built print activation script {SCRIPT_OUTPUT}")
+        return
+
+    script = compact(SCRIPT_OUTPUT.read_text(encoding="utf-8"))
     for needle in (
-        "window.fkstPrintPage",
+        "browserWindow.fkstPrintPage",
         "openPrintView",
-        "window.print()",
+        "browserWindow.print()",
         "button.disabled = false",
         'addEventListener("click"',
         'addEventListener("beforeprint"',
         'addEventListener("afterprint"',
         'matchMedia("print")',
     ):
-        if needle not in page:
-            failures.append(f"{route}: print script missing activation contract: {needle}")
+        if needle not in script:
+            failures.append(f"print script missing activation contract: {needle}")
 
 
 def check_stylesheet(failures: list[str]) -> None:
@@ -193,6 +212,7 @@ def main() -> int:
     routes = manifest_paths()
     for route in routes:
         check_page(route, failures)
+    check_script(failures)
     check_stylesheet(failures)
 
     if failures:
