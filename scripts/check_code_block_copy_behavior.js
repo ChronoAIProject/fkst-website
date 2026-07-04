@@ -4,224 +4,14 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const vm = require("node:vm");
+const { createRequire } = require("node:module");
 
 const ROOT = path.resolve(__dirname, "..");
-const SCRIPT_PATH = path.join(ROOT, "site", "src", "assets", "js", "code-block-copy.js");
+const SITE_ROOT = path.join(ROOT, "site");
+const SCRIPT_PATH = path.join(SITE_ROOT, "src", "assets", "js", "code-block-copy.js");
 const SCRIPT_SOURCE = fs.readFileSync(SCRIPT_PATH, "utf8");
-
-class MiniElement {
-  constructor(tagName, attrs = {}, text = "") {
-    this.tagName = tagName.toUpperCase();
-    this.attributes = new Map();
-    this.children = [];
-    this.parentNode = null;
-    this.ownerDocument = null;
-    this.eventListeners = new Map();
-    this.style = {};
-    this._text = String(text);
-
-    for (const [name, value] of Object.entries(attrs)) {
-      this.setAttribute(name, value);
-    }
-  }
-
-  append(...children) {
-    for (const child of children) {
-      child.parentNode = this;
-      child.ownerDocument = this.ownerDocument;
-      child.visit((descendant) => {
-        descendant.ownerDocument = this.ownerDocument;
-      });
-      this.children.push(child);
-    }
-  }
-
-  remove() {
-    if (!this.parentNode) {
-      return;
-    }
-
-    const index = this.parentNode.children.indexOf(this);
-    if (index !== -1) {
-      this.parentNode.children.splice(index, 1);
-    }
-    this.parentNode = null;
-  }
-
-  setAttribute(name, value = "") {
-    this.attributes.set(name, String(value));
-  }
-
-  getAttribute(name) {
-    return this.attributes.has(name) ? this.attributes.get(name) : null;
-  }
-
-  hasAttribute(name) {
-    return this.attributes.has(name);
-  }
-
-  removeAttribute(name) {
-    this.attributes.delete(name);
-  }
-
-  addEventListener(type, listener) {
-    const listeners = this.eventListeners.get(type) || [];
-    listeners.push(listener);
-    this.eventListeners.set(type, listeners);
-  }
-
-  dispatchEvent(event) {
-    const listeners = this.eventListeners.get(event.type) || [];
-    for (const listener of listeners) {
-      try {
-        const result = listener.call(this, event);
-        if (result && typeof result.then === "function" && this.ownerDocument) {
-          this.ownerDocument.pendingEvents.push(result);
-        }
-      } catch (error) {
-        if (this.ownerDocument) {
-          this.ownerDocument.eventErrors.push(error);
-        } else {
-          throw error;
-        }
-      }
-    }
-    return true;
-  }
-
-  click() {
-    return this.dispatchEvent({
-      type: "click",
-      target: this,
-      currentTarget: this
-    });
-  }
-
-  querySelector(selector) {
-    return this.querySelectorAll(selector)[0] || null;
-  }
-
-  querySelectorAll(selector) {
-    const matches = [];
-    this.visit((element) => {
-      if (element !== this && matchesSelector(element, selector)) {
-        matches.push(element);
-      }
-    });
-    return matches;
-  }
-
-  visit(callback) {
-    callback(this);
-    for (const child of this.children) {
-      child.visit(callback);
-    }
-  }
-
-  get textContent() {
-    return this._text + this.children.map((child) => child.textContent).join("");
-  }
-
-  set textContent(value) {
-    this.children = [];
-    this._text = String(value);
-  }
-
-  select() {
-    if (this.ownerDocument) {
-      this.ownerDocument.selectedText = this.value || this.textContent;
-    }
-  }
-
-  setSelectionRange(start, end) {
-    if (this.ownerDocument) {
-      const value = this.value || this.textContent;
-      this.ownerDocument.selectedText = value.slice(start, end);
-    }
-  }
-}
-
-class MiniButtonElement extends MiniElement {
-  constructor(attrs = {}, text = "") {
-    super("button", attrs, text);
-    this.disabled = false;
-  }
-}
-
-class MiniTextAreaElement extends MiniElement {
-  constructor() {
-    super("textarea");
-    this.value = "";
-  }
-}
-
-class MiniDocument {
-  constructor(body, execCommand) {
-    this.body = body;
-    this.selectedText = "";
-    this.pendingEvents = [];
-    this.eventErrors = [];
-    this.execCommand = execCommand;
-    this.attach(body);
-  }
-
-  attach(element) {
-    element.ownerDocument = this;
-    for (const child of element.children) {
-      this.attach(child);
-    }
-  }
-
-  createElement(tagName) {
-    const normalized = tagName.toLowerCase();
-    const element = normalized === "textarea"
-      ? new MiniTextAreaElement()
-      : new MiniElement(normalized);
-    this.attach(element);
-    return element;
-  }
-
-  querySelectorAll(selector) {
-    const matches = [];
-    this.body.visit((element) => {
-      if (matchesSelector(element, selector)) {
-        matches.push(element);
-      }
-    });
-    return matches;
-  }
-}
-
-function matchesSelector(element, selector) {
-  if (selector === "[data-code-block-copy]") {
-    return element.hasAttribute("data-code-block-copy");
-  }
-  if (selector === "[data-code-block-copy-button]") {
-    return element.hasAttribute("data-code-block-copy-button");
-  }
-  if (selector === "[data-code-block-copy-status]") {
-    return element.hasAttribute("data-code-block-copy-status");
-  }
-  if (selector === "pre code") {
-    return element.tagName === "CODE" && Boolean(findAncestor(element, "PRE"));
-  }
-  if (selector === "textarea") {
-    return element.tagName === "TEXTAREA";
-  }
-  throw new Error(`unsupported selector in test DOM: ${selector}`);
-}
-
-function findAncestor(element, tagName) {
-  let current = element.parentNode;
-  while (current) {
-    if (current.tagName === tagName) {
-      return current;
-    }
-    current = current.parentNode;
-  }
-  return null;
-}
+const siteRequire = createRequire(path.join(SITE_ROOT, "package.json"));
+const { JSDOM } = siteRequire("jsdom");
 
 function createClock() {
   let currentTime = 0;
@@ -259,45 +49,26 @@ function createClock() {
   };
 }
 
-function element(tagName, attrs = {}, children = []) {
-  const node = tagName === "button"
-    ? new MiniButtonElement(attrs)
-    : new MiniElement(tagName, attrs);
-  for (const child of children) {
-    if (typeof child === "string") {
-      node.append(new MiniElement("#text", {}, child));
-    } else {
-      node.append(child);
-    }
-  }
-  return node;
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }
 
 function codeWrapper(text, options = {}) {
-  const includeButton = options.button !== false;
-  const includeStatus = options.status !== false;
-  const includeCode = options.code !== false;
-  const children = [];
+  const button = options.button === false
+    ? ""
+    : '<button type="button" data-code-block-copy-button>Copy</button>';
+  const status = options.status === false
+    ? ""
+    : `<span data-code-block-copy-status>${escapeHtml(options.statusText || "")}</span>`;
+  const code = options.code === false
+    ? ""
+    : `<pre><code>${escapeHtml(text)}</code></pre>`;
 
-  if (includeButton) {
-    children.push(new MiniButtonElement({
-      "data-code-block-copy-button": ""
-    }, options.buttonText || "Copy"));
-  }
-  if (includeStatus) {
-    children.push(element("span", {
-      "data-code-block-copy-status": ""
-    }, [options.statusText || ""]));
-  }
-  if (includeCode) {
-    children.push(element("pre", {}, [
-      element("code", {}, [text])
-    ]));
-  }
-
-  return element("div", {
-    "data-code-block-copy": ""
-  }, children);
+  return `<div data-code-block-copy>${button}${status}${code}</div>`;
 }
 
 function getButton(wrapper) {
@@ -308,71 +79,83 @@ function getStatus(wrapper) {
   return wrapper.querySelector("[data-code-block-copy-status]");
 }
 
+function selectedTextareaText(document) {
+  const textArea = document.querySelector("textarea");
+  assert.ok(textArea, "fallback copy should create a textarea while execCommand runs");
+  return textArea.value.slice(textArea.selectionStart, textArea.selectionEnd);
+}
+
 function createHarness(wrappers, options = {}) {
-  const body = element("body", {}, wrappers);
   const calls = {
     writeText: [],
     execCommand: []
   };
-  const document = new MiniDocument(body, (command) => {
+  const clock = createClock();
+  const errors = [];
+  const dom = new JSDOM(`<!doctype html><html><body>${wrappers.join("")}</body></html>`, {
+    runScripts: "outside-only",
+    url: "https://fkst.local/"
+  });
+  const { document, navigator } = dom.window;
+
+  dom.window.setTimeout = clock.setTimeout;
+  dom.window.clearTimeout = clock.clearTimeout;
+  dom.window.addEventListener("error", (event) => {
+    errors.push(event.error || event.message);
+  });
+  dom.window.addEventListener("unhandledrejection", (event) => {
+    errors.push(event.reason);
+  });
+
+  document.execCommand = (command) => {
     calls.execCommand.push({
       command,
-      text: document.selectedText
+      text: selectedTextareaText(document)
     });
     if (options.execCommandThrows) {
       throw new Error("execCommand failed");
     }
     return options.execCommandResult !== false;
-  });
-  const clock = createClock();
-  const navigator = {};
+  };
 
-  if (options.clipboard !== "missing") {
-    navigator.clipboard = {};
+  if (options.clipboard === "missing") {
+    delete navigator.clipboard;
+  } else {
+    const clipboard = {};
     if (options.clipboard !== "writeTextMissing") {
-      navigator.clipboard.writeText = async (text) => {
+      clipboard.writeText = async (text) => {
         calls.writeText.push(text);
         if (options.writeTextRejects) {
           throw new Error("async clipboard rejected");
         }
       };
     }
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: clipboard
+    });
   }
 
-  const window = {
-    document,
-    navigator,
-    setTimeout: clock.setTimeout,
-    clearTimeout: clock.clearTimeout
-  };
-  const sandbox = {
-    document,
-    navigator,
-    window,
-    HTMLButtonElement: MiniButtonElement,
-    Error
-  };
-  window.HTMLButtonElement = MiniButtonElement;
-
-  vm.runInNewContext(SCRIPT_SOURCE, sandbox, {
-    filename: SCRIPT_PATH
-  });
+  dom.window.eval(SCRIPT_SOURCE);
 
   return {
     calls,
     clock,
-    document
+    document,
+    errors,
+    window: dom.window
   };
 }
 
-async function flushEvents(document) {
-  const pending = document.pendingEvents.splice(0);
-  const results = await Promise.allSettled(pending);
-  const failures = [
-    ...document.eventErrors,
-    ...results.filter((result) => result.status === "rejected").map((result) => result.reason)
-  ];
-  assert.deepEqual(failures, []);
+async function clickAndFlush(button) {
+  button.click();
+  for (let index = 0; index < 5; index += 1) {
+    await Promise.resolve();
+  }
+}
+
+function assertNoClientErrors(errors) {
+  assert.deepEqual(errors, []);
 }
 
 function assertCopied(wrapper) {
@@ -405,15 +188,17 @@ function assertIdle(wrapper) {
 }
 
 async function testCopiesOnlyClickedBlock() {
-  const first = codeWrapper("first block\n");
-  const second = codeWrapper("second block\n", {
-    statusText: "status text must not be copied"
-  });
-  const { calls, document } = createHarness([first, second]);
+  const { calls, document, errors } = createHarness([
+    codeWrapper("first block\n"),
+    codeWrapper("second block\n", {
+      statusText: "status text must not be copied"
+    })
+  ]);
+  const [first, second] = document.querySelectorAll("[data-code-block-copy]");
 
-  getButton(second).click();
-  await flushEvents(document);
+  await clickAndFlush(getButton(second));
 
+  assertNoClientErrors(errors);
   assert.deepEqual(calls.writeText, ["second block\n"]);
   assert.equal(calls.writeText[0].includes("Copy"), false);
   assert.equal(calls.writeText[0].includes("status text must not be copied"), false);
@@ -424,12 +209,14 @@ async function testCopiesOnlyClickedBlock() {
 }
 
 async function testSuccessfulAsyncClipboardResets() {
-  const wrapper = codeWrapper("printf 'fenced'\n");
-  const { calls, clock, document } = createHarness([wrapper]);
+  const { calls, clock, document, errors } = createHarness([
+    codeWrapper("printf 'fenced'\n")
+  ]);
+  const wrapper = document.querySelector("[data-code-block-copy]");
 
-  getButton(wrapper).click();
-  await flushEvents(document);
+  await clickAndFlush(getButton(wrapper));
 
+  assertNoClientErrors(errors);
   assert.deepEqual(calls.writeText, ["printf 'fenced'\n"]);
   assertCopied(wrapper);
   clock.advanceBy(1599);
@@ -439,14 +226,16 @@ async function testSuccessfulAsyncClipboardResets() {
 }
 
 async function testFallbackWhenWriteTextUnavailable() {
-  const wrapper = codeWrapper("fallback without writeText\n");
-  const { calls, document } = createHarness([wrapper], {
+  const { calls, document, errors } = createHarness([
+    codeWrapper("fallback without writeText\n")
+  ], {
     clipboard: "writeTextMissing"
   });
+  const wrapper = document.querySelector("[data-code-block-copy]");
 
-  getButton(wrapper).click();
-  await flushEvents(document);
+  await clickAndFlush(getButton(wrapper));
 
+  assertNoClientErrors(errors);
   assert.deepEqual(calls.writeText, []);
   assert.deepEqual(calls.execCommand, [{
     command: "copy",
@@ -456,14 +245,16 @@ async function testFallbackWhenWriteTextUnavailable() {
 }
 
 async function testFallbackAfterAsyncRejects() {
-  const wrapper = codeWrapper("fallback after rejection\n");
-  const { calls, document } = createHarness([wrapper], {
+  const { calls, document, errors } = createHarness([
+    codeWrapper("fallback after rejection\n")
+  ], {
     writeTextRejects: true
   });
+  const wrapper = document.querySelector("[data-code-block-copy]");
 
-  getButton(wrapper).click();
-  await flushEvents(document);
+  await clickAndFlush(getButton(wrapper));
 
+  assertNoClientErrors(errors);
   assert.deepEqual(calls.writeText, ["fallback after rejection\n"]);
   assert.deepEqual(calls.execCommand, [{
     command: "copy",
@@ -473,43 +264,46 @@ async function testFallbackAfterAsyncRejects() {
 }
 
 async function testFailureWhenAllCopyPathsFail() {
-  const wrapper = codeWrapper("uncopied text\n");
-  const { calls, clock, document } = createHarness([wrapper], {
+  const { calls, clock, document, errors } = createHarness([
+    codeWrapper("uncopied text\n")
+  ], {
     writeTextRejects: true,
     execCommandResult: false
   });
+  const wrapper = document.querySelector("[data-code-block-copy]");
 
-  getButton(wrapper).click();
-  await flushEvents(document);
+  await clickAndFlush(getButton(wrapper));
 
+  assertNoClientErrors(errors);
   assert.deepEqual(calls.writeText, ["uncopied text\n"]);
   assert.deepEqual(calls.execCommand, [{
     command: "copy",
     text: "uncopied text\n"
   }]);
   assertFailed(wrapper);
-  assert.equal(document.body.querySelectorAll("textarea").length, 0);
+  assert.equal(document.querySelectorAll("textarea").length, 0);
   clock.advanceBy(1600);
   assertIdle(wrapper);
 }
 
 async function testIncompleteWrappersDoNothing() {
-  const missingButton = codeWrapper("missing button\n", {
-    button: false
-  });
-  const missingStatus = codeWrapper("missing status\n", {
-    status: false
-  });
-  const missingCode = codeWrapper("", {
-    code: false
-  });
-  const { calls, document } = createHarness([missingButton, missingStatus, missingCode]);
+  const { calls, document, errors } = createHarness([
+    codeWrapper("missing button\n", {
+      button: false
+    }),
+    codeWrapper("missing status\n", {
+      status: false
+    }),
+    codeWrapper("", {
+      code: false
+    })
+  ]);
+  const [missingButton, missingStatus, missingCode] = document.querySelectorAll("[data-code-block-copy]");
 
-  getButton(missingStatus).click();
-  getButton(missingCode).click();
-  await flushEvents(document);
+  await clickAndFlush(getButton(missingStatus));
+  await clickAndFlush(getButton(missingCode));
 
-  assert.deepEqual(document.eventErrors, []);
+  assertNoClientErrors(errors);
   assert.deepEqual(calls.writeText, []);
   assert.deepEqual(calls.execCommand, []);
   assert.equal(getButton(missingStatus).disabled, false);
