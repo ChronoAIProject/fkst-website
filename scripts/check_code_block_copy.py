@@ -55,6 +55,7 @@ def render_markdown_fixture() -> subprocess.CompletedProcess[str]:
     node_script = r"""
 const MarkdownIt = require("markdown-it");
 const configure = require("./eleventy.config.js");
+const { COPY_FOUNDATION_PROVENANCE } = require("./lib/codeBlockCopy");
 
 const markdown = new MarkdownIt();
 let amendedMarkdown = false;
@@ -71,6 +72,15 @@ const eleventyConfig = {
 configure(eleventyConfig);
 if (!amendedMarkdown) {
   throw new Error("Eleventy markdown library was not amended");
+}
+if (!COPY_FOUNDATION_PROVENANCE || COPY_FOUNDATION_PROVENANCE.reviewedIssue !== "#81") {
+  throw new Error("Missing #81 copy foundation provenance");
+}
+if (COPY_FOUNDATION_PROVENANCE.status !== "absent") {
+  throw new Error("Unexpected #81 copy foundation provenance status");
+}
+if (!COPY_FOUNDATION_PROVENANCE.evidence.includes("no clipboard helper")) {
+  throw new Error("Incomplete #81 copy foundation absence evidence");
 }
 
 process.stdout.write(markdown.render("```js\nconsole.log('copy scaffold');\n```\n"));
