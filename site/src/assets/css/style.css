@@ -59,6 +59,53 @@ a:focus-visible {
   outline-offset: 4px;
 }
 
+.visually-hidden {
+  border: 0;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+.external-link-marker {
+  display: inline-block;
+  height: 0.72em;
+  margin-left: 0.28em;
+  position: relative;
+  vertical-align: 0.05em;
+  width: 0.72em;
+}
+
+.external-link-marker::before,
+.external-link-marker::after {
+  content: "";
+  position: absolute;
+}
+
+.external-link-marker::before {
+  background: currentColor;
+  height: 1.5px;
+  right: 0.08em;
+  top: 0.34em;
+  transform: rotate(-45deg);
+  transform-origin: right center;
+  width: 0.54em;
+}
+
+.external-link-marker::after {
+  border-right: 1.5px solid currentColor;
+  border-top: 1.5px solid currentColor;
+  height: 0.38em;
+  right: 0.06em;
+  top: 0.08em;
+  width: 0.38em;
+}
+
 .site-header,
 .hero,
 .features,
