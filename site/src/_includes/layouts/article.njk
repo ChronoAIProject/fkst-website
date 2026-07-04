@@ -16,7 +16,12 @@
   {% endif %}
 </section>
 
-<div class="page-content">
+<div class="page-content" data-article-scroll-content>
 {{ content | safe }}
 </div>
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }}
+    <script src="{{ "/assets/js/article-scroll-progress.js" | url }}" defer data-article-scroll-progress-script></script>
 {% endblock %}
