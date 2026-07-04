@@ -6,6 +6,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const {
+  countReadableWords,
   estimateReadingTime
 } = require("../site/src/_includes/utils/reading-time");
 
@@ -35,18 +36,57 @@ function assertUtilityShape() {
   assert.equal(estimate.minutes, 2);
   assert.equal(estimate.label, "2 min read");
   assert.equal(estimate.wordCount, 201);
+
+  assert.equal(
+    countReadableWords("<p>Hello <strong>reader</strong>.</p>"),
+    2,
+    "HTML tags must not inflate readable word counts"
+  );
+  assert.equal(
+    countReadableWords("<p>One&nbsp;two &amp; three.</p>"),
+    3,
+    "HTML entities must normalize into readable text or spacing"
+  );
+  assert.equal(
+    countReadableWords(
+      "<p>Visible words</p><script>hidden words here</script><style>.hidden { color: red; }</style>"
+    ),
+    2,
+    "script and style blocks must not inflate readable word counts"
+  );
+  assert.equal(
+    countReadableWords("<p>可靠投递 keeps events durable.</p>"),
+    7,
+    "CJK-heavy prose must count readable CJK characters"
+  );
+}
+
+function extractRequiredMatch(html, pattern, message) {
+  const match = html.match(pattern);
+  assert.ok(match, message);
+  return match;
 }
 
 function assertArticleMarkup(relativePath) {
   const filePath = path.join(SITE_DIR, relativePath);
   const html = fs.readFileSync(filePath, "utf8");
-  const headerMatch = html.match(
-    /<section class="page-header article-header"[\s\S]*?<\/section>/
+  const header = extractRequiredMatch(
+    html,
+    /<section class="page-header article-header"[\s\S]*?<\/section>/,
+    `${relativePath}: missing article header`
+  )[0];
+  const content = extractRequiredMatch(
+    html,
+    /<div class="page-content">([\s\S]*?)<\/div>\s*<\/main>/,
+    `${relativePath}: missing article body content`
+  )[1];
+  const allMetaMatches = [...html.matchAll(/\sdata-reading-time(?:[=>\s]|$)/g)];
+  assert.equal(
+    allMetaMatches.length,
+    1,
+    `${relativePath}: expected exactly one reading-time element on the page`
   );
 
-  assert.ok(headerMatch, `${relativePath}: missing article header`);
-
-  const header = headerMatch[0];
   const titleIndex = header.indexOf('id="page-title"');
   const metaIndex = header.indexOf("data-reading-time");
   assert.notEqual(titleIndex, -1, `${relativePath}: missing page title`);
@@ -66,6 +106,13 @@ function assertArticleMarkup(relativePath) {
   );
 
   const label = stripTags(metaMatches[0][1]);
+  const expectedEstimate = estimateReadingTime(content);
+
+  assert.equal(
+    label,
+    expectedEstimate.label,
+    `${relativePath}: reading-time label must be derived from article body content`
+  );
   assert.match(
     label,
     /^(Less than 1 min read|[1-9][0-9]* min read)$/,

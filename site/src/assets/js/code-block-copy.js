@@ -1,0 +1,86 @@
+(() => {
+  const wrappers = Array.from(document.querySelectorAll("[data-code-block-copy]"));
+  if (wrappers.length === 0) {
+    return;
+  }
+
+  const idleLabel = "Copy";
+  const copiedLabel = "Copied";
+  const failedLabel = "Copy failed";
+  const resetDelay = 1600;
+
+  const copyWithFallback = (text) => {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.setAttribute("readonly", "");
+    textArea.style.position = "fixed";
+    textArea.style.inset = "0 auto auto 0";
+    textArea.style.opacity = "0";
+    textArea.style.pointerEvents = "none";
+    document.body.append(textArea);
+    textArea.select();
+    textArea.setSelectionRange(0, textArea.value.length);
+
+    try {
+      if (!document.execCommand("copy")) {
+        throw new Error("copy command rejected");
+      }
+    } finally {
+      textArea.remove();
+    }
+  };
+
+  const writeClipboard = async (text) => {
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+      try {
+        await navigator.clipboard.writeText(text);
+        return;
+      } catch {
+        copyWithFallback(text);
+        return;
+      }
+    }
+
+    copyWithFallback(text);
+  };
+
+  wrappers.forEach((wrapper) => {
+    const button = wrapper.querySelector("[data-code-block-copy-button]");
+    const status = wrapper.querySelector("[data-code-block-copy-status]");
+    const code = wrapper.querySelector("pre code");
+    let resetTimer = 0;
+
+    if (!(button instanceof HTMLButtonElement) || !status || !code) {
+      return;
+    }
+
+    const setIdle = () => {
+      button.textContent = idleLabel;
+      button.removeAttribute("data-copy-state");
+      wrapper.removeAttribute("data-copy-state");
+      status.textContent = "";
+    };
+
+    const setState = (state, label) => {
+      window.clearTimeout(resetTimer);
+      button.textContent = label;
+      button.setAttribute("data-copy-state", state);
+      wrapper.setAttribute("data-copy-state", state);
+      status.textContent = label;
+      resetTimer = window.setTimeout(setIdle, resetDelay);
+    };
+
+    button.disabled = false;
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      try {
+        await writeClipboard(code.textContent || "");
+        setState("copied", copiedLabel);
+      } catch {
+        setState("failed", failedLabel);
+      } finally {
+        button.disabled = false;
+      }
+    });
+  });
+})();
