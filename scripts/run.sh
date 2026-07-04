@@ -105,6 +105,7 @@ cmd_check() {
 }
 
 site_build_and_smoke() {
+  node "$ROOT/site/test/externalLinks.test.js"
   (cd "$ROOT/site" && npm run build)
   python3 -B "$ROOT/scripts/check_back_to_top.py"
   python3 -B "$ROOT/scripts/check_code_block_copy.py"
@@ -112,6 +113,7 @@ site_build_and_smoke() {
   python3 -B "$ROOT/scripts/check_print_page_button.py"
   node "$ROOT/scripts/check_print_page_button_behavior.js"
   python3 -B "$ROOT/scripts/check_external_links.py"
+  python3 -B "$ROOT/scripts/check_article_scroll_progress.py"
   node "$ROOT/scripts/check_reading_time.js"
 }
 

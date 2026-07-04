@@ -189,7 +189,7 @@ def check_stylesheet(failures: list[str]) -> None:
     for needle in (
         "@page",
         "html, body { background: #ffffff !important; color: #111111 !important; font-size: 11pt; min-height: auto;",
-        ".site-header, .site-footer, .back-to-top-button, .code-block-copy-button, .code-block-copy-status, .repo-actions { display: none !important;",
+        ".site-header, .site-footer, .article-scroll-progress, .back-to-top-button, .code-block-copy-button, .code-block-copy-status, .repo-actions { display: none !important;",
         "main, .hero, .features, .page-header, .page-content { margin: 0; max-width: none; padding: 0; width: 100%;",
         "main a[href]:not([href^=\"#\"])::after { content: \" (\" attr(href) \")\";",
         "h1, h2, h3 { break-after: avoid;",
