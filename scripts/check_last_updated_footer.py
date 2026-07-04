@@ -80,9 +80,10 @@ def build_closed_metadata_fixtures() -> subprocess.CompletedProcess[str]:
             nav:
               - label: Home
                 href: /
-            languageSwitch:
-              - label: EN
-                current: true
+            localeCode: en
+            localeAlternates:
+              en: /__last_updated_invalid/
+              zh-CN: /zh/
             footerText: Invalid metadata fixture.
             eleventyComputed:
               lastUpdated: not-a-date
@@ -105,9 +106,10 @@ def build_closed_metadata_fixtures() -> subprocess.CompletedProcess[str]:
             nav:
               - label: Home
                 href: /
-            languageSwitch:
-              - label: EN
-                current: true
+            localeCode: en
+            localeAlternates:
+              en: /__last_updated_missing/
+              zh-CN: /zh/
             footerText: Missing metadata fixture.
             eleventyComputed:
               lastUpdated:
