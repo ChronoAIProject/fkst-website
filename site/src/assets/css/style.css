@@ -504,6 +504,116 @@ h2 {
   outline-offset: 4px;
 }
 
+.keyboard-shortcut-overlay {
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  max-width: min(680px, calc(100vw - 32px));
+  padding: 0;
+  width: 100%;
+}
+
+.keyboard-shortcut-overlay::backdrop {
+  background: rgb(22 26 29 / 0.48);
+}
+
+.keyboard-shortcut-panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 24px 80px rgb(22 26 29 / 0.24);
+  display: grid;
+  gap: 18px;
+  padding: clamp(22px, 5vw, 34px);
+}
+
+.keyboard-shortcut-header {
+  align-items: start;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.keyboard-shortcut-header h2 {
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  margin-bottom: 0;
+}
+
+.keyboard-shortcut-close {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 1.2rem;
+  height: 36px;
+  justify-content: center;
+  line-height: 1;
+  width: 36px;
+}
+
+.keyboard-shortcut-close:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.keyboard-shortcut-close:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.keyboard-shortcut-close:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.keyboard-shortcut-summary {
+  color: var(--muted);
+  margin-bottom: 0;
+}
+
+.keyboard-shortcut-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+.keyboard-shortcut-item {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 6px;
+  padding-top: 12px;
+}
+
+.keyboard-shortcut-item dt {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+}
+
+.keyboard-shortcut-item dd {
+  color: var(--muted);
+  margin: 0;
+}
+
+.keyboard-shortcut-item kbd {
+  background: var(--accent-soft);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--accent-strong);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.82rem;
+  font-weight: 800;
+  min-width: 2.2rem;
+  padding: 4px 8px;
+  text-align: center;
+}
+
 @media (prefers-color-scheme: dark) {
   .code-block-copy-button {
     color: #082f2c;
@@ -511,6 +621,10 @@ h2 {
 
   .back-to-top-button {
     color: #082f2c;
+  }
+
+  .keyboard-shortcut-item kbd {
+    color: #99f6e4;
   }
 }
 

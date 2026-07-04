@@ -1,0 +1,41 @@
+<dialog
+  class="keyboard-shortcut-overlay"
+  data-keyboard-shortcut-overlay
+  aria-labelledby="keyboard-shortcut-overlay-title"
+  aria-describedby="keyboard-shortcut-overlay-summary"
+>
+  {% set isKeyboardShortcutZh = lang == "zh-Hans" %}
+  <section class="keyboard-shortcut-panel" data-keyboard-shortcut-panel>
+    <header class="keyboard-shortcut-header">
+      <div>
+        <p class="eyebrow">{{ keyboardShortcuts.eyebrowZhHans if isKeyboardShortcutZh else keyboardShortcuts.eyebrow }}</p>
+        <h2 id="keyboard-shortcut-overlay-title">
+          {{ keyboardShortcuts.headingZhHans if isKeyboardShortcutZh else keyboardShortcuts.heading }}
+        </h2>
+      </div>
+      <button
+        class="keyboard-shortcut-close"
+        type="button"
+        data-keyboard-shortcut-close
+        aria-label="{% if isKeyboardShortcutZh %}关闭键盘快捷键帮助{% else %}Close keyboard shortcut help{% endif %}"
+        disabled
+      >
+        &times;
+      </button>
+    </header>
+    <p id="keyboard-shortcut-overlay-summary" class="keyboard-shortcut-summary">
+      {{ keyboardShortcuts.summaryZhHans if isKeyboardShortcutZh else keyboardShortcuts.summary }}
+    </p>
+    <dl class="keyboard-shortcut-list">
+      {% for shortcut in keyboardShortcuts.items %}
+        <div class="keyboard-shortcut-item" data-keyboard-shortcut="{{ shortcut.id }}">
+          <dt>
+            <kbd>{{ shortcut.keys }}</kbd>
+            <span>{{ shortcut.labelZhHans if isKeyboardShortcutZh else shortcut.label }}</span>
+          </dt>
+          <dd>{{ shortcut.descriptionZhHans if isKeyboardShortcutZh else shortcut.description }}</dd>
+        </div>
+      {% endfor %}
+    </dl>
+  </section>
+</dialog>
