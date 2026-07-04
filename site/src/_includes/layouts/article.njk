@@ -1,0 +1,21 @@
+{% extends "layouts/base.njk" %}
+
+{% block content %}
+<section class="page-header article-header" aria-labelledby="page-title">
+  {% if articleEyebrow %}
+    <p class="eyebrow">{{ articleEyebrow }}</p>
+  {% endif %}
+  <h1 id="page-title">{{ articleTitle or title }}</h1>
+  {% set estimate = content | readingTime %}
+  <p class="article-meta" data-reading-time aria-label="Estimated reading time">
+    <span>{{ estimate.label }}</span>
+  </p>
+  {% if articleIntro %}
+    <p class="page-intro">{{ articleIntro }}</p>
+  {% endif %}
+</section>
+
+<div class="page-content">
+{{ content | safe }}
+</div>
+{% endblock %}

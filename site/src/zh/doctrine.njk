@@ -1,9 +1,14 @@
 ---
-layout: layouts/page.njk
+layout: layouts/article.njk
 permalink: /zh/doctrine.html
 lang: zh-Hans
 title: 信条 | fkst
 description: fkst 信条重点：marker-as-fact、codex-judgment gate、host 写姿态，以及唯一当前形态。
+articleEyebrow: 信条重点
+articleTitle: 少量规则让自治保持可读。
+articleIntro: >-
+  fkst 偏向持久事实、显式 gate 和当前态设计。这里是精选信条，
+  不是完整 contract。
 brandHref: /
 nav:
   - label: 首页
@@ -29,54 +34,43 @@ languageSwitch:
 footerHref: /zh/
 footerLabel: 返回首页
 ---
-<section class="page-header" aria-labelledby="page-title">
-  <p class="eyebrow">信条重点</p>
-  <h1 id="page-title">少量规则让自治保持可读。</h1>
-  <p class="page-intro">
-    fkst 偏向持久事实、显式 gate 和当前态设计。这里是精选信条，
-    不是完整 contract。
-  </p>
+<section class="content-section" aria-labelledby="markers">
+  <h2 id="markers">Marker 是事实</h2>
+  <div>
+    <p>
+      GitHub 是 eventually consistent 的，因此 fkst 把 marker record
+      写成事实，并围绕它们使用 version-CAS 风格的 claim。marker
+      不是装饰性 metadata；它是后续 worker 可读取、比较、推进的
+      可观察状态。
+    </p>
+  </div>
 </section>
 
-<div class="page-content">
-  <section class="content-section" aria-labelledby="markers">
-    <h2 id="markers">Marker 是事实</h2>
-    <div>
-      <p>
-        GitHub 是 eventually consistent 的，因此 fkst 把 marker record
-        写成事实，并围绕它们使用 version-CAS 风格的 claim。marker
-        不是装饰性 metadata；它是后续 worker 可读取、比较、推进的
-        可观察状态。
-      </p>
-    </div>
-  </section>
+<section class="content-section" aria-labelledby="gates">
+  <h2 id="gates">Gate 判断流水线</h2>
+  <div>
+    <p>
+      gate 是对工作产物与证据进行 codex judgment 的 pipeline，而不是
+      撒在 queue 上的逐 event 人工 label。review 必须显式、可重复，
+      并绑定到被判断的 proposal 或 delivery stage。
+    </p>
+    <p>
+      写姿态同样显式。website package 的发布只有一个 host 环境事实：
+      FKST_SITE_WRITE=1 开启真写；缺少发布配置时 fail closed。
+    </p>
+  </div>
+</section>
 
-  <section class="content-section" aria-labelledby="gates">
-    <h2 id="gates">Gate 判断流水线</h2>
-    <div>
-      <p>
-        gate 是对工作产物与证据进行 codex judgment 的 pipeline，而不是
-        撒在 queue 上的逐 event 人工 label。review 必须显式、可重复，
-        并绑定到被判断的 proposal 或 delivery stage。
-      </p>
-      <p>
-        写姿态同样显式。website package 的发布只有一个 host 环境事实：
-        FKST_SITE_WRITE=1 开启真写；缺少发布配置时 fail closed。
-      </p>
-    </div>
-  </section>
-
-  <section class="content-section" aria-labelledby="current-shape">
-    <h2 id="current-shape">唯一当前形态</h2>
-    <div>
-      <p>
-        fkst 不保留 backward-compat mode、deprecated shim 或 speculative
-        branch。contract 改变时，系统的当前形态也随之完整改变。
-      </p>
-      <p>
-        新模式必须服务已经证明存在的当前问题。默认倾向是保持 runtime
-        与 package 足够小，让每个可见机制都真正有用。
-      </p>
-    </div>
-  </section>
-</div>
+<section class="content-section" aria-labelledby="current-shape">
+  <h2 id="current-shape">唯一当前形态</h2>
+  <div>
+    <p>
+      fkst 不保留 backward-compat mode、deprecated shim 或 speculative
+      branch。contract 改变时，系统的当前形态也随之完整改变。
+    </p>
+    <p>
+      新模式必须服务已经证明存在的当前问题。默认倾向是保持 runtime
+      与 package 足够小，让每个可见机制都真正有用。
+    </p>
+  </div>
+</section>
