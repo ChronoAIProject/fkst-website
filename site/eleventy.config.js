@@ -5,6 +5,7 @@ const {
   externalLinkMarker,
   shouldUseEleventyUrlFilter,
 } = require("./lib/externalLinks");
+const { extractTocEntries } = require("./src/_includes/toc");
 const { estimateReadingTime } = require("./src/_includes/utils/reading-time");
 
 module.exports = function (eleventyConfig) {
@@ -15,6 +16,7 @@ module.exports = function (eleventyConfig) {
   eleventyConfig.addFilter("externalLinkMarker", externalLinkMarker);
   eleventyConfig.addFilter("shouldUseEleventyUrl", shouldUseEleventyUrlFilter);
   eleventyConfig.addFilter("readingTime", estimateReadingTime);
+  eleventyConfig.addFilter("tocEntries", extractTocEntries);
   eleventyConfig.addPassthroughCopy({ "src/assets": "assets" });
   eleventyConfig.addPassthroughCopy("probe-manifest");
   eleventyConfig.setLibrary("md", markdownLibrary);

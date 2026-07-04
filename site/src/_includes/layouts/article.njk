@@ -1,6 +1,15 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
+{% set articleContent %}
+{{ content | safe }}
+{% endset %}
+{% if hasTableOfContents %}
+  {% set tableOfContents = articleContent | tocEntries %}
+{% else %}
+  {% set tableOfContents = [] %}
+{% endif %}
+
 <section class="page-header article-header" aria-labelledby="page-title">
   {% if articleEyebrow %}
     <p class="eyebrow">{{ articleEyebrow }}</p>
@@ -15,7 +24,17 @@
   {% endif %}
 </section>
 
-<div class="page-content">
-{{ content | safe }}
-</div>
+{% if tableOfContents | length %}
+  <div class="article-shell">
+    {% include "components/TableOfContents.njk" %}
+    <div class="page-content article-main">
+      {{ articleContent | safe }}
+    </div>
+  </div>
+  <script src="{{ "/assets/js/table-of-contents.js" | url }}" defer data-toc-script></script>
+{% else %}
+  <div class="page-content">
+    {{ articleContent | safe }}
+  </div>
+{% endif %}
 {% endblock %}

@@ -67,6 +67,33 @@ function extractRequiredMatch(html, pattern, message) {
   return match;
 }
 
+function extractBalancedElement(html, className) {
+  const startPattern = new RegExp(`<([a-z0-9]+)\\b[^>]*class="[^"]*\\b${className}\\b[^"]*"[^>]*>`, "i");
+  const startMatch = html.match(startPattern);
+  assert.ok(startMatch, `missing element with class "${className}"`);
+
+  const tagName = startMatch[1].toLowerCase();
+  const startIndex = startMatch.index;
+  const openEnd = startIndex + startMatch[0].length;
+  const tagPattern = new RegExp(`</?${tagName}\\b[^>]*>`, "gi");
+  tagPattern.lastIndex = openEnd;
+
+  let depth = 1;
+  let match;
+  while ((match = tagPattern.exec(html))) {
+    if (match[0][1] === "/") {
+      depth -= 1;
+      if (depth === 0) {
+        return html.slice(openEnd, match.index);
+      }
+    } else {
+      depth += 1;
+    }
+  }
+
+  assert.fail(`unclosed element with class "${className}"`);
+}
+
 function assertArticleMarkup(relativePath) {
   const filePath = path.join(SITE_DIR, relativePath);
   const html = fs.readFileSync(filePath, "utf8");
@@ -75,11 +102,7 @@ function assertArticleMarkup(relativePath) {
     /<section class="page-header article-header"[\s\S]*?<\/section>/,
     `${relativePath}: missing article header`
   )[0];
-  const content = extractRequiredMatch(
-    html,
-    /<div class="page-content">([\s\S]*?)<\/div>\s*<\/main>/,
-    `${relativePath}: missing article body content`
-  )[1];
+  const content = extractBalancedElement(html, "page-content");
   const allMetaMatches = [...html.matchAll(/\sdata-reading-time(?:[=>\s]|$)/g)];
   assert.equal(
     allMetaMatches.length,

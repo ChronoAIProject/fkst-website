@@ -111,6 +111,9 @@ site_build_and_smoke() {
   python3 -B "$ROOT/scripts/check_print_page_button.py"
   python3 -B "$ROOT/scripts/check_external_links.py"
   node "$ROOT/scripts/check_reading_time.js"
+  node "$ROOT/scripts/check_toc_entries.js"
+  node "$ROOT/scripts/check_table_of_contents_behavior.js"
+  python3 -B "$ROOT/scripts/check_table_of_contents.py"
 }
 
 cmd_test_affected() {
