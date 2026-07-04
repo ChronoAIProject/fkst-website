@@ -97,11 +97,10 @@ def build_fixtures() -> subprocess.CompletedProcess[str]:
                 href: https://chronoaiproject.github.io/fkst-website/nav
               - label: Email nav
                 href: mailto:nav@example.com
-            languageSwitch:
-              - label: Internal language
-                href: /zh/
-              - label: External language
-                href: https://example.com/language
+            localeCode: en
+            localeAlternates:
+              en: /__external_link_smoke/
+              zh-CN: https://example.com/language
             footerHref: https://example.com/footer
             footerLabel: External footer
             ---
@@ -133,9 +132,10 @@ def build_fixtures() -> subprocess.CompletedProcess[str]:
             nav:
               - label: Internal nav
                 href: /doctrine.html
-            languageSwitch:
-              - label: Internal language
-                href: /zh/
+            localeCode: en
+            localeAlternates:
+              en: /__external_link_internal_footer/
+              zh-CN: /zh/
             footerHref: /architecture.html
             footerLabel: Internal footer
             ---
@@ -244,7 +244,6 @@ def assert_fixture_markup(parser: ExternalLinkParser, failures: list[str]) -> No
 
     for href, context in (
         ("/fkst-website/architecture.html", "fixture nav internal url-filtered link"),
-        ("/fkst-website/zh/", "fixture language internal url-filtered link"),
         (
             "https://chronoaiproject.github.io/fkst-website/nav",
             "fixture nav same-origin absolute link",
