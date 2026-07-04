@@ -48,6 +48,7 @@
       {% block content %}{% endblock %}
     </main>
 
+    {% set footerLastUpdated = lastUpdated | lastUpdatedMetadata %}
     <footer class="site-footer">
       {% if footerHref and footerLabel %}
         {% if footerHref | shouldUseEleventyUrl %}
@@ -57,6 +58,9 @@
         {% endif %}
       {% else %}
         <p>{{ footerText }}</p>
+      {% endif %}
+      {% if footerLastUpdated %}
+        <p class="footer-last-updated" data-last-updated>Last updated: <time datetime="{{ footerLastUpdated.datetime }}">{{ footerLastUpdated.label }}</time></p>
       {% endif %}
     </footer>
 

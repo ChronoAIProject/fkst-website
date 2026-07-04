@@ -110,6 +110,7 @@ site_build_and_smoke() {
   python3 -B "$ROOT/scripts/check_code_block_copy.py"
   python3 -B "$ROOT/scripts/check_print_page_button.py"
   python3 -B "$ROOT/scripts/check_external_links.py"
+  python3 -B "$ROOT/scripts/check_last_updated_footer.py"
   node "$ROOT/scripts/check_reading_time.js"
 }
 
