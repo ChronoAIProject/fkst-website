@@ -8,6 +8,15 @@
   const copiedLabel = "Copied";
   const failedLabel = "Copy failed";
   const resetDelay = 1600;
+  const requiredSourceAttributes = [
+    "data-code-block-copy-text",
+    "data-code-block-copy-language",
+    "data-code-block-copy-info",
+    "data-code-block-copy-kind"
+  ];
+
+  const hasSourceContract = (wrapper) => requiredSourceAttributes
+    .every((attribute) => wrapper.hasAttribute(attribute));
 
   const copyWithFallback = (text) => {
     const textArea = document.createElement("textarea");
@@ -47,12 +56,13 @@
   wrappers.forEach((wrapper) => {
     const button = wrapper.querySelector("[data-code-block-copy-button]");
     const status = wrapper.querySelector("[data-code-block-copy-status]");
-    const text = wrapper.getAttribute("data-code-block-copy-text");
     let resetTimer = 0;
 
-    if (!(button instanceof HTMLButtonElement) || !status || text === null) {
+    if (!(button instanceof HTMLButtonElement) || !status || !hasSourceContract(wrapper)) {
       return;
     }
+
+    const text = wrapper.getAttribute("data-code-block-copy-text") || "";
 
     const setIdle = () => {
       button.textContent = idleLabel;
