@@ -1,15 +1,28 @@
 #!/usr/bin/env python3
-"""Smoke-check the article scroll-progress scaffold."""
+"""Smoke-check the article scroll-progress scaffold and reuse audit."""
 
 from __future__ import annotations
 
 from html.parser import HTMLParser
 from pathlib import Path
+import subprocess
 
 
 ROOT = Path(__file__).resolve().parents[1]
 SITE_DIR = ROOT / "site" / "_site"
 STYLE_OUTPUT = SITE_DIR / "assets" / "css" / "style.css"
+FOUNDATION_SHA = "685dae7e4be4b262de8b3fc6310ec132072370e9"
+TARGET_SHA = "ce9d3cb2b5bb10791d767cdd6eedadc1fb0e6947"
+RECURRENCE_PATHS = (
+    "site",
+    "scripts",
+    ".fkst/local-packages",
+    ".fkst/local-libraries",
+)
+RECURRENCE_PATTERN = (
+    r"reading[-_ ]?progress|scroll[-_ ]?progress|article[-_ ]?progress|"
+    r"progressbar|data-(article-scroll|reading)-progress"
+)
 ARTICLE_ROUTES = (
     "/architecture.html",
     "/doctrine.html",
@@ -44,6 +57,49 @@ def output_path(route: str) -> Path:
 
 def compact(text: str) -> str:
     return " ".join(text.split())
+
+
+def git(*args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", "-C", str(ROOT), *args],
+        check=False,
+        encoding="utf-8",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+
+def recurrence_audit_failures() -> list[str]:
+    failures: list[str] = []
+    for sha, label in ((FOUNDATION_SHA, "#82 foundation"), (TARGET_SHA, "target")):
+        result = git("rev-parse", "--verify", f"{sha}^{{commit}}")
+        if result.returncode != 0:
+            failures.append(f"{label}: missing reviewable commit {sha}")
+
+    if failures:
+        return failures
+
+    ancestor = git("merge-base", "--is-ancestor", FOUNDATION_SHA, TARGET_SHA)
+    if ancestor.returncode != 0:
+        failures.append(f"#82 foundation {FOUNDATION_SHA} is not present in target {TARGET_SHA}")
+
+    for sha, label in ((FOUNDATION_SHA, "#82 foundation"), (TARGET_SHA, "target")):
+        grep = git(
+            "grep",
+            "-n",
+            "-i",
+            "-E",
+            RECURRENCE_PATTERN,
+            sha,
+            "--",
+            *RECURRENCE_PATHS,
+        )
+        if grep.returncode == 0:
+            failures.append(f"{label} {sha} already has article progress reuse surface:\n{grep.stdout}")
+        elif grep.returncode != 1:
+            failures.append(f"could not audit {label} tree for article progress reuse surface: {grep.stderr.strip()}")
+
+    return failures
 
 
 def parse_route(route: str, failures: list[str]) -> ArticleScrollProgressParser | None:
@@ -118,7 +174,7 @@ def check_stylesheet(failures: list[str]) -> None:
 
 
 def main() -> int:
-    failures: list[str] = []
+    failures: list[str] = recurrence_audit_failures()
     for route in ARTICLE_ROUTES:
         check_article_route(route, failures)
     for route in NON_ARTICLE_ROUTES:
