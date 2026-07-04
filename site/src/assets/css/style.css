@@ -988,6 +988,12 @@ h2 {
     min-height: auto;
   }
 
+  /* Docs print scaffold: keep article content readable before feature-specific print rules expand. */
+  .page-content {
+    background: #ffffff !important;
+    color: #111111 !important;
+  }
+
   .site-header,
   .site-footer,
   .article-scroll-progress,
