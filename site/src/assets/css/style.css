@@ -988,19 +988,32 @@ h2 {
     min-height: auto;
   }
 
-  /* Docs print scaffold: keep article content readable before feature-specific print rules expand. */
+  body,
+  .article-shell,
+  .page-header,
   .page-content {
     background: #ffffff !important;
     color: #111111 !important;
   }
 
   .site-header,
+  .top-nav,
+  .header-actions,
+  .language-switch,
+  .theme-toggle-control,
+  .print-page-control,
   .site-footer,
   .article-scroll-progress,
   .docs-sidebar,
+  .docs-sidebar-toggle,
   .back-to-top-button,
   .code-block-copy-button,
   .code-block-copy-status,
+  .keyboard-shortcut-overlay,
+  .keyboard-shortcut-panel,
+  .keyboard-shortcut-close,
+  .heading-anchor-link,
+  .external-link-marker,
   .repo-actions {
     display: none !important;
   }
@@ -1009,12 +1022,25 @@ h2 {
   .hero,
   .features,
   .page-header,
+  .article-header,
   .article-shell,
   .page-content {
     margin: 0;
     max-width: none;
     padding: 0;
     width: 100%;
+  }
+
+  .article-shell,
+  .article-shell[data-docs-sidebar-state="closed"] {
+    display: block;
+    gap: 0;
+    grid-template-columns: none;
+  }
+
+  .page-content {
+    display: block;
+    gap: 0;
   }
 
   .hero {
@@ -1048,29 +1074,49 @@ h2 {
 
   h1,
   h2,
-  h3 {
+  h3,
+  h4 {
     break-after: avoid;
-    color: #111111;
+    color: #111111 !important;
     page-break-after: avoid;
   }
 
+  h2 + *,
+  h3 + *,
+  h4 + * {
+    break-before: avoid;
+    page-break-before: avoid;
+  }
+
   p,
-  li {
+  li,
+  dt,
+  dd,
+  blockquote {
+    color: #111111 !important;
     orphans: 3;
     widows: 3;
   }
 
-  a {
+  .page-header a,
+  .page-content a {
     color: #111111;
     text-decoration: underline;
     text-decoration-thickness: 0.08em;
   }
 
-  main a[href]:not([href^="#"])::after {
+  .page-header a[href]:not([href^="#"]):not([href=""])::after,
+  .page-content a[href]:not([href^="#"]):not([href=""])::after {
     content: " (" attr(href) ")";
     font-size: 9pt;
     overflow-wrap: anywhere;
     word-break: break-word;
+  }
+
+  .page-header a[href^="#"]::after,
+  .page-content a[href^="#"]::after,
+  .heading-anchor-link::after {
+    content: "";
   }
 
   .eyebrow,
@@ -1111,22 +1157,42 @@ h2 {
     break-inside: avoid;
     margin-block: 10pt;
     page-break-inside: avoid;
+    position: static;
   }
 
   .code-block-copy pre,
   pre {
-    background: #f7f7f7 !important;
+    background: #ffffff !important;
     border: 1px solid #c8c8c8;
+    border-radius: 0;
     color: #111111 !important;
+    max-width: 100%;
     overflow: visible;
+    overflow-wrap: anywhere;
     padding: 10pt;
     white-space: pre-wrap;
-    word-break: break-word;
+    word-break: normal;
+  }
+
+  .code-block-copy pre,
+  pre,
+  blockquote,
+  table,
+  figure {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   .code-block-copy code,
   code {
     color: #111111 !important;
     font-size: 9.5pt;
+  }
+
+  img,
+  svg {
+    break-inside: avoid;
+    max-width: 100%;
+    page-break-inside: avoid;
   }
 }
