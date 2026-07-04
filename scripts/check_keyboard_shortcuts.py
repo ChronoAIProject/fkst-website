@@ -5,12 +5,26 @@ from __future__ import annotations
 
 from html.parser import HTMLParser
 from pathlib import Path
+import subprocess
 
 
 ROOT = Path(__file__).resolve().parents[1]
 SITE_DIR = ROOT / "site" / "_site"
 MANIFEST = ROOT / "site" / "probe-manifest"
 STYLE_OUTPUT = SITE_DIR / "assets" / "css" / "style.css"
+TARGET_SHA = "ba1691ec545b2820bc0a2f7a5beb17051b716b01"
+AUDIT_PATHS = (
+    "site/src",
+    "site/lib",
+    "site/eleventy.config.js",
+    "scripts",
+    ".fkst/local-packages",
+    ".fkst/local-libraries",
+)
+AUDIT_PATTERN = (
+    r"#85|keyboard[-_ ]?shortcut|shortcut[-_ ]?help|data-keyboard|"
+    r"KeyboardShortcut|Keyboard shortcuts"
+)
 EXPECTED_SHORTCUTS = {
     "open-shortcut-help": ("?", "Open keyboard shortcut help"),
     "focus-primary-navigation": ("g n", "Focus primary navigation"),
@@ -93,8 +107,48 @@ def normalized_text(parts: list[str]) -> str:
     return " ".join("".join(parts).split())
 
 
-def main() -> int:
+def git(*args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", "-C", str(ROOT), *args],
+        check=False,
+        encoding="utf-8",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+
+def foundation_audit_failures() -> list[str]:
     failures: list[str] = []
+    target = git("rev-parse", "--verify", f"{TARGET_SHA}^{{commit}}")
+    if target.returncode != 0:
+        return [f"missing reviewable target commit {TARGET_SHA} for #85 foundation audit"]
+
+    history = git("log", "--format=%H %s", "--extended-regexp", "--grep", AUDIT_PATTERN, "-i", TARGET_SHA)
+    if history.returncode != 0:
+        failures.append(f"could not audit target history for #85 foundation: {history.stderr.strip()}")
+    elif history.stdout.strip():
+        failures.append(f"target history has a possible #85 keyboard shortcut foundation:\n{history.stdout}")
+
+    tree = git(
+        "grep",
+        "-n",
+        "-i",
+        "-E",
+        AUDIT_PATTERN,
+        TARGET_SHA,
+        "--",
+        *AUDIT_PATHS,
+    )
+    if tree.returncode == 0:
+        failures.append(f"target tree already has keyboard shortcut reuse surface:\n{tree.stdout}")
+    elif tree.returncode != 1:
+        failures.append(f"could not audit target tree for keyboard shortcut reuse surface: {tree.stderr.strip()}")
+
+    return failures
+
+
+def main() -> int:
+    failures: list[str] = foundation_audit_failures()
     routes = manifest_paths()
     for route in routes:
         path = output_path(route)
