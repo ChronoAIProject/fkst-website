@@ -17,6 +17,12 @@ const SIDEBAR_SCRIPT_OUTPUT_PATH = path.join(SITE_OUTPUT, "assets", "js", "docs-
 const SHORTCUT_SCRIPT_SOURCE = fs.readFileSync(SHORTCUT_SCRIPT_PATH, "utf8");
 const SIDEBAR_SCRIPT_SOURCE = fs.readFileSync(SIDEBAR_SCRIPT_PATH, "utf8");
 const SIDEBAR_STORAGE_KEY = "fkst-docs-sidebar";
+const ARTICLE_ROUTES = [
+  "/architecture.html",
+  "/doctrine.html",
+  "/zh/architecture.html",
+  "/zh/doctrine.html",
+];
 const siteRequire = createRequire(path.join(SITE_ROOT, "package.json"));
 const { JSDOM } = siteRequire("jsdom");
 
@@ -78,6 +84,29 @@ function createBaseMarkup() {
     </html>`;
 }
 
+function createSidebarMarkup(content = "") {
+  return `<!doctype html>
+    <html>
+      <body>
+        <div class="article-shell" data-docs-sidebar-shell data-docs-sidebar-open>
+          <aside data-docs-sidebar data-docs-sidebar-state="open">
+            <button
+              type="button"
+              data-docs-sidebar-toggle
+              aria-controls="docs-sidebar-panel"
+              aria-expanded="true"
+              aria-label="Hide docs sidebar"
+            >Sidebar</button>
+            <nav id="docs-sidebar-panel" data-docs-sidebar-panel aria-label="Article sections">
+              <ol data-docs-sidebar-list></ol>
+            </nav>
+          </aside>
+          <div data-docs-sidebar-content>${content}</div>
+        </div>
+      </body>
+    </html>`;
+}
+
 function installDialogPolyfill(window, calls) {
   const { HTMLDialogElement } = window;
   Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
@@ -108,6 +137,19 @@ function installContentEditable(window) {
   });
 }
 
+function createMemoryStorage() {
+  const data = new Map();
+  return {
+    getItem(key) {
+      const normalizedKey = String(key);
+      return data.has(normalizedKey) ? data.get(normalizedKey) : null;
+    },
+    setItem(key, value) {
+      data.set(String(key), String(value));
+    }
+  };
+}
+
 function createHarness(options = {}) {
   const calls = {
     close: 0,
@@ -131,6 +173,12 @@ function createHarness(options = {}) {
   installContentEditable(window);
   installDialogPolyfill(window, calls);
 
+  if (options.localStorage) {
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      value: options.localStorage
+    });
+  }
   if (options.storedSidebarState !== undefined) {
     window.localStorage.setItem(SIDEBAR_STORAGE_KEY, options.storedSidebarState);
   }
@@ -182,6 +230,120 @@ function createHarness(options = {}) {
   };
 }
 
+function createSidebarHarness(options = {}) {
+  const errors = [];
+  const html = options.html || createSidebarMarkup(options.content || `
+    <section>
+      <h2 id="company-model">Company model<a href="#company-model" data-heading-anchor>#</a></h2>
+      <p>Company model body.</p>
+    </section>
+    <section>
+      <h2 id="delivery-model">Reliable delivery<a href="#delivery-model" data-heading-anchor>#</a></h2>
+      <p>Reliable delivery body.</p>
+    </section>
+  `);
+  const dom = new JSDOM(html, {
+    pretendToBeVisual: true,
+    runScripts: "outside-only",
+    url: options.url || "https://fkst.local/"
+  });
+  const { document, window } = dom.window;
+
+  window.addEventListener("error", (event) => {
+    errors.push(event.error || event.message);
+  });
+  window.addEventListener("unhandledrejection", (event) => {
+    errors.push(event.reason);
+  });
+
+  installContentEditable(window);
+
+  if (options.localStorage) {
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      value: options.localStorage
+    });
+  }
+  if (options.storedSidebarState !== undefined) {
+    window.localStorage.setItem(SIDEBAR_STORAGE_KEY, options.storedSidebarState);
+  }
+  if (options.localStorageValue !== undefined) {
+    window.localStorage.setItem(SIDEBAR_STORAGE_KEY, options.localStorageValue);
+  }
+  if (options.localStorageThrows) {
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      get() {
+        throw new Error("localStorage unavailable");
+      }
+    });
+  }
+  if (options.getItemThrows) {
+    Object.defineProperty(window.Storage.prototype, "getItem", {
+      configurable: true,
+      value() {
+        throw new Error("getItem unavailable");
+      }
+    });
+  }
+  if (options.setItemThrows) {
+    Object.defineProperty(window.Storage.prototype, "setItem", {
+      configurable: true,
+      value() {
+        throw new Error("setItem unavailable");
+      }
+    });
+  }
+
+  try {
+    window.eval(SIDEBAR_SCRIPT_SOURCE);
+  } catch (error) {
+    errors.push(error);
+  }
+
+  return {
+    document,
+    dom,
+    errors,
+    sidebar: document.querySelector("[data-docs-sidebar]"),
+    sidebarPanel: document.querySelector("[data-docs-sidebar-panel]"),
+    sidebarList: document.querySelector("[data-docs-sidebar-list]"),
+    sidebarShell: document.querySelector("[data-docs-sidebar-shell]"),
+    sidebarToggle: document.querySelector("[data-docs-sidebar-toggle]"),
+    window
+  };
+}
+
+function createAbsentSidebarHarness(html = "<!doctype html><html><body><main><h1>Home</h1></main></body></html>") {
+  const errors = [];
+  const dom = new JSDOM(html, {
+    pretendToBeVisual: true,
+    runScripts: "outside-only",
+    url: "https://fkst.local/"
+  });
+  const { document, window } = dom.window;
+
+  window.addEventListener("error", (event) => {
+    errors.push(event.error || event.message);
+  });
+  window.addEventListener("unhandledrejection", (event) => {
+    errors.push(event.reason);
+  });
+
+  try {
+    window.eval(SIDEBAR_SCRIPT_SOURCE);
+  } catch (error) {
+    errors.push(error);
+  }
+
+  return {
+    document,
+    dom,
+    errors,
+    window
+  };
+}
+
 function dispatchQuestion(target) {
   const event = new target.ownerDocument.defaultView.KeyboardEvent("keydown", {
     bubbles: true,
@@ -194,6 +356,7 @@ function dispatchQuestion(target) {
 
 function dispatchSidebarShortcut(target, options = {}) {
   const event = new target.ownerDocument.defaultView.KeyboardEvent("keydown", {
+    altKey: Boolean(options.altKey),
     bubbles: true,
     cancelable: true,
     ctrlKey: Boolean(options.ctrlKey),
@@ -201,6 +364,23 @@ function dispatchSidebarShortcut(target, options = {}) {
     metaKey: Boolean(options.metaKey),
     shiftKey: Boolean(options.shiftKey)
   });
+  target.dispatchEvent(event);
+  return event;
+}
+
+function preventableSidebarShortcut(target, options = {}) {
+  const event = new target.ownerDocument.defaultView.KeyboardEvent("keydown", {
+    altKey: Boolean(options.altKey),
+    bubbles: true,
+    cancelable: true,
+    ctrlKey: Boolean(options.ctrlKey),
+    key: options.key || "b",
+    metaKey: Boolean(options.metaKey),
+    shiftKey: Boolean(options.shiftKey)
+  });
+  if (options.defaultPrevented) {
+    event.preventDefault();
+  }
   target.dispatchEvent(event);
   return event;
 }
@@ -222,6 +402,31 @@ function assertSidebarState(harness, expectedState) {
     harness.sidebarToggle.getAttribute("aria-label"),
     isOpen ? "Hide docs sidebar" : "Show docs sidebar"
   );
+}
+
+function normalizeText(value) {
+  return String(value).replace(/\s+/g, " ").trim();
+}
+
+function sidebarLinks(harness) {
+  return Array.from(harness.sidebarList.querySelectorAll("a"));
+}
+
+function expectedHeadingLinks(document) {
+  const content = document.querySelector("[data-docs-sidebar-content]");
+  assert.ok(content, "expected docs sidebar content root");
+
+  return Array.from(content.querySelectorAll("h2[id]"))
+    .map((heading) => {
+      const clone = heading.cloneNode(true);
+      clone.querySelectorAll("[data-heading-anchor]").forEach((anchor) => anchor.remove());
+      return {
+        href: `#${encodeURIComponent(heading.id)}`,
+        id: heading.id,
+        label: normalizeText(clone.textContent)
+      };
+    })
+    .filter((heading) => heading.label);
 }
 
 function openFromOpener(harness) {
@@ -256,10 +461,7 @@ function testBuiltPagesIncludeActivationScripts() {
     const html = fs.readFileSync(pagePath, "utf8");
     const shortcutScripts = html.match(/<script\b[^>]*\bdata-keyboard-shortcut-script\b[^>]*>/g) || [];
     const sidebarScripts = html.match(/<script\b[^>]*\bdata-docs-sidebar-script\b[^>]*>/g) || [];
-    const isArticle = route === "/architecture.html" ||
-      route === "/doctrine.html" ||
-      route === "/zh/architecture.html" ||
-      route === "/zh/doctrine.html";
+    const isArticle = ARTICLE_ROUTES.includes(route);
 
     assert.equal(shortcutScripts.length, 1, `${route}: expected one keyboard shortcut activation script`);
     assert.match(shortcutScripts[0], /\bdefer\b/, `${route}: keyboard shortcut script must be deferred`);
@@ -274,6 +476,61 @@ function testBuiltPagesIncludeActivationScripts() {
       assert.match(sidebarScripts[0], /\bdefer\b/, `${route}: docs sidebar script must be deferred`);
       assert.match(sidebarScripts[0], /\/assets\/js\/docs-sidebar\.js/, `${route}: docs sidebar script path missing`);
     }
+  }
+}
+
+function testBuiltArticlePagesBuildDocsSidebarNavigation() {
+  for (const route of ARTICLE_ROUTES) {
+    const html = fs.readFileSync(outputPath(route), "utf8");
+    const harness = createSidebarHarness({
+      html,
+      url: `https://fkst.local${route}`
+    });
+    const expectedLinks = expectedHeadingLinks(harness.document);
+    const links = sidebarLinks(harness);
+
+    assert.ok(expectedLinks.length > 0, `${route}: expected article headings`);
+    assert.equal(links.length, expectedLinks.length, `${route}: sidebar link count mismatch`);
+    assert.deepEqual(
+      links.map((link) => ({
+        href: link.getAttribute("href"),
+        label: normalizeText(link.textContent)
+      })),
+      expectedLinks.map((heading) => ({
+        href: heading.href,
+        label: heading.label
+      })),
+      `${route}: sidebar links must mirror article h2 ids and labels`
+    );
+    assert.equal(
+      links.some((link) => normalizeText(link.textContent).includes("#")),
+      false,
+      `${route}: sidebar labels must strip heading anchor text`
+    );
+    assert.equal(harness.sidebar.hasAttribute("data-docs-sidebar-empty"), false);
+    assertSidebarState(harness, "open");
+    assertNoClientErrors(harness.errors);
+  }
+}
+
+function testNonArticlePagesDoNotRunDocsSidebarContract() {
+  for (const route of manifestRoutes().filter((route) => !ARTICLE_ROUTES.includes(route))) {
+    const html = fs.readFileSync(outputPath(route), "utf8");
+    const harness = createAbsentSidebarHarness(html);
+    const event = dispatchSidebarShortcut(harness.document.body, { ctrlKey: true });
+
+    assert.equal(event.defaultPrevented, false, `${route}: missing sidebar DOM should not register shortcut`);
+    assert.equal(
+      harness.document.documentElement.hasAttribute("data-docs-sidebar-state"),
+      false,
+      `${route}: document state should not be introduced`
+    );
+    assert.equal(
+      harness.document.querySelector("[data-docs-sidebar-state]"),
+      null,
+      `${route}: sidebar state attributes should not be introduced`
+    );
+    assertNoClientErrors(harness.errors);
   }
 }
 
@@ -325,6 +582,28 @@ function testEditableTargetsDoNotOpenHelpOrToggleSidebar() {
     assert.equal(harness.overlay.open, false, `${id}: overlay must stay closed`);
     assert.equal(harness.calls.showModal, 0, `${id}: showModal must not be called`);
     assertSidebarState(harness, "open");
+    assertNoClientErrors(harness.errors);
+  }
+}
+
+function testDocsSidebarShortcutRejectsNonMatchingKeys() {
+  const cases = [
+    ["alt-b", { altKey: true, ctrlKey: true }],
+    ["shift-b", { ctrlKey: true, shiftKey: true }],
+    ["ctrl-meta-b", { ctrlKey: true, metaKey: true }],
+    ["non-b", { ctrlKey: true, key: "k" }],
+    ["plain-b", {}],
+    ["default-prevented", { ctrlKey: true, defaultPrevented: true }],
+  ];
+
+  for (const [id, options] of cases) {
+    const harness = createHarness();
+    const opener = harness.document.getElementById("opener");
+    const event = preventableSidebarShortcut(opener, options);
+
+    assert.equal(event.defaultPrevented, Boolean(options.defaultPrevented), `${id}: event prevention mismatch`);
+    assertSidebarState(harness, "open");
+    assert.equal(harness.window.localStorage.getItem(SIDEBAR_STORAGE_KEY), null, `${id}: state should not persist`);
     assertNoClientErrors(harness.errors);
   }
 }
@@ -385,7 +664,30 @@ function testDocsSidebarShortcutTogglesAndPersists() {
   assert.equal(metaEvent.defaultPrevented, true);
   assertSidebarState(harness, "open");
   assert.equal(harness.window.localStorage.getItem(SIDEBAR_STORAGE_KEY), "open");
+
+  const uppercaseEvent = dispatchSidebarShortcut(opener, { ctrlKey: true, key: "B" });
+  assert.equal(uppercaseEvent.defaultPrevented, true);
+  assertSidebarState(harness, "closed");
+  assert.equal(harness.window.localStorage.getItem(SIDEBAR_STORAGE_KEY), "closed");
   assertNoClientErrors(harness.errors);
+}
+
+function testDocsSidebarPersistsAcrossReload() {
+  const localStorage = createMemoryStorage();
+  const first = createSidebarHarness({ localStorage });
+  const opener = first.document.body;
+
+  const event = dispatchSidebarShortcut(opener, { ctrlKey: true });
+  assert.equal(event.defaultPrevented, true);
+  assertSidebarState(first, "closed");
+  assert.equal(first.window.localStorage.getItem(SIDEBAR_STORAGE_KEY), "closed");
+  assertNoClientErrors(first.errors);
+
+  const second = createSidebarHarness({ localStorage });
+
+  assertSidebarState(second, "closed");
+  assert.equal(second.window.localStorage.getItem(SIDEBAR_STORAGE_KEY), "closed");
+  assertNoClientErrors(second.errors);
 }
 
 function testDocsSidebarButtonTogglesAndPersists() {
@@ -417,6 +719,26 @@ function testDocsSidebarStorageFailureFallback() {
   }
 }
 
+function testDocsSidebarEmptyHeadingState() {
+  const harness = createSidebarHarness({
+    content: `
+      <section>
+        <h2>No id heading</h2>
+        <p>Not linkable.</p>
+      </section>
+      <section>
+        <h2 id="anchor-only"><a href="#anchor-only" data-heading-anchor>#</a></h2>
+        <p>Anchor-only heading has no label after stripping heading anchors.</p>
+      </section>
+    `
+  });
+
+  assertSidebarState(harness, "open");
+  assert.deepEqual(sidebarLinks(harness), []);
+  assert.equal(harness.sidebar.hasAttribute("data-docs-sidebar-empty"), true);
+  assertNoClientErrors(harness.errors);
+}
+
 function testQuestionHelpCoexistsWithDocsSidebarShortcut() {
   const harness = createHarness();
   const opener = harness.document.getElementById("opener");
@@ -436,15 +758,20 @@ function testQuestionHelpCoexistsWithDocsSidebarShortcut() {
 function main() {
   const tests = [
     testBuiltPagesIncludeActivationScripts,
+    testBuiltArticlePagesBuildDocsSidebarNavigation,
+    testNonArticlePagesDoNotRunDocsSidebarContract,
     testQuestionOpensAndCloseButtonRestoresFocus,
     testEscapeCancelClosesAndRestoresFocus,
     testEditableTargetsDoNotOpenHelpOrToggleSidebar,
+    testDocsSidebarShortcutRejectsNonMatchingKeys,
     testBackdropClickClosesOnlyOutsidePanel,
     testDocsSidebarInitialStateBuildsNavigation,
     testDocsSidebarPersistedClosedState,
     testDocsSidebarShortcutTogglesAndPersists,
+    testDocsSidebarPersistsAcrossReload,
     testDocsSidebarButtonTogglesAndPersists,
     testDocsSidebarStorageFailureFallback,
+    testDocsSidebarEmptyHeadingState,
     testQuestionHelpCoexistsWithDocsSidebarShortcut,
   ];
 
