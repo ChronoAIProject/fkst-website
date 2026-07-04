@@ -34,9 +34,7 @@ def main() -> int:
     print_surface = compact(style_output or style_source)
     for needle in (
         "@media print",
-        "background: #ffffff !important;",
-        "color: #111111 !important;",
-        ".page-content",
+        ".page-content { background: #ffffff !important; color: #111111 !important; }",
     ):
         if needle not in print_surface:
             failures.append(f"print stylesheet missing docs print scaffold: {needle}")
