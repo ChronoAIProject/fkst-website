@@ -117,6 +117,7 @@ site_build_and_smoke() {
   python3 -B "$ROOT/scripts/check_last_updated_footer.py"
   node "$ROOT/scripts/check_last_updated_metadata.js"
   python3 -B "$ROOT/scripts/check_docs_print_stylesheet.py"
+  node "$ROOT/scripts/check_docs_print_stylesheet_behavior.js"
   python3 -B "$ROOT/scripts/check_print_page_button.py"
   python3 -B "$ROOT/scripts/check_external_links.py"
   python3 -B "$ROOT/scripts/check_locale_scaffold.py"
