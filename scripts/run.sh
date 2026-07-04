@@ -111,6 +111,7 @@ site_build_and_smoke() {
   python3 -B "$ROOT/scripts/check_code_block_copy.py"
   node "$ROOT/scripts/check_code_block_copy_behavior.js"
   node "$ROOT/scripts/check_keyboard_shortcuts_behavior.js"
+  python3 -B "$ROOT/scripts/check_last_updated_footer.py"
   python3 -B "$ROOT/scripts/check_print_page_button.py"
   python3 -B "$ROOT/scripts/check_external_links.py"
   python3 -B "$ROOT/scripts/check_article_scroll_progress.py"
