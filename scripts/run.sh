@@ -117,6 +117,7 @@ site_build_and_smoke() {
   python3 -B "$ROOT/scripts/check_external_links.py"
   python3 -B "$ROOT/scripts/check_locale_scaffold.py"
   python3 -B "$ROOT/scripts/check_locale_switcher_behavior.py"
+  python3 -B "$ROOT/scripts/check_theme_toggle_scaffold.py"
   python3 -B "$ROOT/scripts/check_keyboard_shortcuts.py"
   python3 -B "$ROOT/scripts/check_article_scroll_progress.py"
   node "$ROOT/scripts/check_article_scroll_progress_behavior.js"
