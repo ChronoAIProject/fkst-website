@@ -77,7 +77,7 @@ function assertArticleMarkup(relativePath) {
   )[0];
   const content = extractRequiredMatch(
     html,
-    /<div class="page-content">([\s\S]*?)<\/div>\s*<\/main>/,
+    /<div class="page-content"[^>]*>([\s\S]*?)<\/div>\s*<\/main>/,
     `${relativePath}: missing article body content`
   )[1];
   const allMetaMatches = [...html.matchAll(/\sdata-reading-time(?:[=>\s]|$)/g)];
