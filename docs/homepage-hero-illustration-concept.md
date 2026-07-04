@@ -86,5 +86,3 @@ signal.
 The final composition should leave quiet space near the headline side of the
 hero, keep important detail away from CTA hit areas, and remain legible in both
 light and dark theme contexts.
-
-⟦AI:FKST⟧
