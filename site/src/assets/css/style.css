@@ -334,15 +334,16 @@ p {
 }
 
 h1 {
-  font-size: clamp(3rem, 12vw, 7.4rem);
+  font-size: clamp(2.75rem, 9vw, 5.8rem);
   letter-spacing: 0;
-  line-height: 0.92;
+  line-height: 0.98;
   margin-bottom: 28px;
-  max-width: 980px;
+  max-width: 880px;
+  overflow-wrap: anywhere;
 }
 
 .hero h1 {
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
 }
 
 .hero-text {
@@ -401,7 +402,7 @@ h1 {
 }
 
 .page-header h1 {
-  font-size: clamp(2.7rem, 8vw, 5.8rem);
+  font-size: clamp(2.45rem, 6.4vw, 4.8rem);
 }
 
 .article-header h1 {
@@ -915,7 +916,7 @@ h2 {
   }
 
   h1 {
-    font-size: clamp(3rem, 19vw, 5.3rem);
+    font-size: clamp(2.35rem, 10.5vw, 3.35rem);
   }
 
   .feature-grid {
