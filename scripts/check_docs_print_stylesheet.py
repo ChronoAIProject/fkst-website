@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Smoke-check the docs print stylesheet hook."""
+"""Smoke-check the docs print stylesheet behavior."""
 
 from __future__ import annotations
 
@@ -32,12 +32,23 @@ def main() -> int:
         failures.append("built stylesheet differs from source asset")
 
     print_surface = compact(style_output or style_source)
-    for needle in (
+    required_rules = (
         "@media print",
-        ".page-content { background: #ffffff !important; color: #111111 !important; }",
-    ):
+        "@page { margin: 16mm; }",
+        "body, .article-shell, .page-header, .page-content { background: #ffffff !important; color: #111111 !important; }",
+        ".site-header, .top-nav, .header-actions, .language-switch, .theme-toggle-control, .print-page-control, .site-footer, .article-scroll-progress, .docs-sidebar, .docs-sidebar-toggle, .back-to-top-button, .code-block-copy-button, .code-block-copy-status, .keyboard-shortcut-overlay, .keyboard-shortcut-panel, .keyboard-shortcut-close, .heading-anchor-link, .external-link-marker, .repo-actions { display: none !important; }",
+        ".article-shell, .article-shell[data-docs-sidebar-state=\"closed\"] { display: block; gap: 0; grid-template-columns: none; }",
+        ".page-header a[href]:not([href^=\"#\"]):not([href=\"\"])::after, .page-content a[href]:not([href^=\"#\"]):not([href=\"\"])::after { content: \" (\" attr(href) \")\";",
+        ".page-header a[href^=\"#\"]::after, .page-content a[href^=\"#\"]::after, .heading-anchor-link::after { content: \"\"; }",
+        ".code-block-copy pre, pre { background: #ffffff !important; border: 1px solid #c8c8c8;",
+        "overflow-wrap: anywhere;",
+        "white-space: pre-wrap;",
+        "break-inside: avoid;",
+        "page-break-inside: avoid;",
+    )
+    for needle in required_rules:
         if needle not in print_surface:
-            failures.append(f"print stylesheet missing docs print scaffold: {needle}")
+            failures.append(f"print stylesheet missing docs print behavior: {needle}")
 
     if failures:
         for failure in failures:

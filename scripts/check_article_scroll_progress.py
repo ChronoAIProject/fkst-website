@@ -170,7 +170,8 @@ def check_stylesheet(failures: list[str]) -> None:
         ".article-scroll-progress-bar",
         "width: var(--article-scroll-progress, 0%);",
         "@media print",
-        ".site-header, .site-footer, .article-scroll-progress, .docs-sidebar, .back-to-top-button",
+        ".article-scroll-progress",
+        "display: none !important;",
     ):
         if needle not in style:
             failures.append(f"stylesheet missing article scroll-progress contract: {needle}")

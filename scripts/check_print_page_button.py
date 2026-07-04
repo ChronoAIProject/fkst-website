@@ -123,13 +123,13 @@ def check_stylesheet(failures: list[str]) -> None:
     style = compact(STYLE_OUTPUT.read_text(encoding="utf-8"))
     for needle in (
         "@media print",
-        ".site-header, .site-footer, .article-scroll-progress, .docs-sidebar, .back-to-top-button, .code-block-copy-button, .code-block-copy-status, .repo-actions { display: none !important;",
-        "main, .hero, .features, .page-header, .article-shell, .page-content { margin: 0; max-width: none; padding: 0; width: 100%;",
+        ".site-header, .top-nav, .header-actions, .language-switch, .theme-toggle-control, .print-page-control, .site-footer, .article-scroll-progress, .docs-sidebar, .docs-sidebar-toggle, .back-to-top-button, .code-block-copy-button, .code-block-copy-status, .keyboard-shortcut-overlay, .keyboard-shortcut-panel, .keyboard-shortcut-close, .heading-anchor-link, .external-link-marker, .repo-actions { display: none !important;",
+        "main, .hero, .features, .page-header, .article-header, .article-shell, .page-content { margin: 0; max-width: none; padding: 0; width: 100%;",
         "background: #ffffff !important;",
-        "main a[href]:not([href^=\"#\"])::after { content: \" (\" attr(href) \")\";",
+        ".page-header a[href]:not([href^=\"#\"]):not([href=\"\"])::after, .page-content a[href]:not([href^=\"#\"]):not([href=\"\"])::after { content: \" (\" attr(href) \")\";",
         "break-inside: avoid;",
         "page-break-inside: avoid;",
-        ".code-block-copy pre, pre { background: #f7f7f7 !important;",
+        ".code-block-copy pre, pre { background: #ffffff !important;",
         "white-space: pre-wrap;",
         ".print-page-button:focus-visible",
     ):
