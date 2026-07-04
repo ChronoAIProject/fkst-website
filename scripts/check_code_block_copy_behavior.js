@@ -73,14 +73,20 @@ function codeWrapper(text, options = {}) {
       ? ""
       : ` data-code-block-copy-text="${escapeHtml(options.sourceText)}"`;
   const language = options.language === undefined
-    ? ""
-    : ` data-code-block-copy-language="${escapeHtml(options.language)}"`;
+    ? ' data-code-block-copy-language=""'
+    : options.language === null
+      ? ""
+      : ` data-code-block-copy-language="${escapeHtml(options.language)}"`;
   const info = options.info === undefined
-    ? ""
-    : ` data-code-block-copy-info="${escapeHtml(options.info)}"`;
+    ? ' data-code-block-copy-info=""'
+    : options.info === null
+      ? ""
+      : ` data-code-block-copy-info="${escapeHtml(options.info)}"`;
   const kind = options.kind === undefined
-    ? ""
-    : ` data-code-block-copy-kind="${escapeHtml(options.kind)}"`;
+    ? ' data-code-block-copy-kind="code_block"'
+    : options.kind === null
+      ? ""
+      : ` data-code-block-copy-kind="${escapeHtml(options.kind)}"`;
 
   return `<div data-code-block-copy${copyText}${language}${info}${kind}>${button}${status}${code}</div>`;
 }
@@ -315,13 +321,33 @@ async function testIncompleteWrappersOnlyActivateWithSourceContract() {
     }),
     codeWrapper("missing source contract\n", {
       sourceText: null
+    }),
+    codeWrapper("missing language contract\n", {
+      language: null
+    }),
+    codeWrapper("missing info contract\n", {
+      info: null
+    }),
+    codeWrapper("missing kind contract\n", {
+      kind: null
     })
   ]);
-  const [missingButton, missingStatus, sourceOnly, missingSource] = document.querySelectorAll("[data-code-block-copy]");
+  const [
+    missingButton,
+    missingStatus,
+    sourceOnly,
+    missingSource,
+    missingLanguage,
+    missingInfo,
+    missingKind
+  ] = document.querySelectorAll("[data-code-block-copy]");
 
   await clickAndFlush(getButton(missingStatus));
   await clickAndFlush(getButton(sourceOnly));
   await clickAndFlush(getButton(missingSource));
+  await clickAndFlush(getButton(missingLanguage));
+  await clickAndFlush(getButton(missingInfo));
+  await clickAndFlush(getButton(missingKind));
 
   assertNoClientErrors(errors);
   assert.deepEqual(calls.writeText, ["source without nested code\n"]);
@@ -331,8 +357,41 @@ async function testIncompleteWrappersOnlyActivateWithSourceContract() {
   assert.equal(getButton(sourceOnly).disabled, false);
   assert.equal(getButton(missingSource).disabled, true);
   assert.equal(getButton(missingSource).hidden, true);
+  assert.equal(getButton(missingLanguage).disabled, true);
+  assert.equal(getButton(missingLanguage).hidden, true);
+  assert.equal(getButton(missingInfo).disabled, true);
+  assert.equal(getButton(missingInfo).hidden, true);
+  assert.equal(getButton(missingKind).disabled, true);
+  assert.equal(getButton(missingKind).hidden, true);
   assert.equal(getStatus(missingButton).textContent, "");
   assertCopied(sourceOnly);
+}
+
+async function testEmptySourceTextIsValid() {
+  const { calls, document, errors } = createHarness([
+    codeWrapper("", {
+      language: "",
+      info: "",
+      kind: "fence"
+    })
+  ]);
+  const wrapper = document.querySelector("[data-code-block-copy]");
+
+  await clickAndFlush(getButton(wrapper));
+
+  assertNoClientErrors(errors);
+  assert.deepEqual(calls.writeText, [""]);
+  assert.equal(getButton(wrapper).disabled, false);
+  assert.equal(getButton(wrapper).hidden, false);
+  assertCopied(wrapper);
+}
+
+function testDoesNotScrapePreCodeSource() {
+  assert.equal(SCRIPT_SOURCE.includes('querySelector("pre code")'), false);
+  assert.equal(SCRIPT_SOURCE.includes("querySelector('pre code')"), false);
+  assert.equal(SCRIPT_SOURCE.includes('querySelector("code")'), false);
+  assert.equal(SCRIPT_SOURCE.includes("querySelector('code')"), false);
+  assert.equal(SCRIPT_SOURCE.includes("code.textContent"), false);
 }
 
 async function main() {
@@ -342,7 +401,9 @@ async function main() {
     testFallbackWhenWriteTextUnavailable,
     testFallbackAfterAsyncRejects,
     testFailureWhenAllCopyPathsFail,
-    testIncompleteWrappersOnlyActivateWithSourceContract
+    testIncompleteWrappersOnlyActivateWithSourceContract,
+    testEmptySourceTextIsValid,
+    testDoesNotScrapePreCodeSource
   ];
 
   for (const test of tests) {
