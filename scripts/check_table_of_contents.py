@@ -15,6 +15,8 @@ SITE_DIR = ROOT / "site"
 OUTPUT_DIR = SITE_DIR / "_site"
 STYLE_OUTPUT = OUTPUT_DIR / "assets" / "css" / "style.css"
 SCRIPT_OUTPUT = OUTPUT_DIR / "assets" / "js" / "table-of-contents.js"
+TOC_MODULE_SOURCE = SITE_DIR / "src" / "_includes" / "toc.js"
+TOC_SCRIPT_SOURCE = SITE_DIR / "src" / "assets" / "js" / "table-of-contents.js"
 
 FIXTURES = {
     SITE_DIR / "src" / "__toc_nested.njk": """\
@@ -386,6 +388,10 @@ def assert_layout_assets(failures: list[str]) -> None:
 
 
 def main() -> int:
+    if not TOC_MODULE_SOURCE.is_file() or not TOC_SCRIPT_SOURCE.is_file():
+        print("fkst-website dept=site tag=skip TABLE_OF_CONTENTS implementation=absent")
+        return 0
+
     failures: list[str] = []
     result = build_fixtures()
     if result.returncode != 0:

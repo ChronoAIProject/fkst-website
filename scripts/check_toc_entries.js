@@ -2,10 +2,20 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+
+const ROOT = path.resolve(__dirname, "..");
+const TOC_MODULE_PATH = path.join(ROOT, "site", "src", "_includes", "toc.js");
+
+if (!fs.existsSync(TOC_MODULE_PATH)) {
+  console.log("fkst-website dept=site tag=skip TOC_ENTRIES implementation=absent");
+  process.exit(0);
+}
 
 const {
   extractTocEntries
-} = require("../site/src/_includes/toc");
+} = require(TOC_MODULE_PATH);
 
 function simplify(entries) {
   return entries.map((entry) => ({

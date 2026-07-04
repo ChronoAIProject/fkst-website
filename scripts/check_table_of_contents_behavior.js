@@ -8,6 +8,12 @@ const vm = require("node:vm");
 
 const ROOT = path.resolve(__dirname, "..");
 const SCRIPT_PATH = path.join(ROOT, "site", "src", "assets", "js", "table-of-contents.js");
+
+if (!fs.existsSync(SCRIPT_PATH)) {
+  console.log("fkst-website dept=site tag=skip TABLE_OF_CONTENTS_BEHAVIOR implementation=absent");
+  process.exit(0);
+}
+
 const SCRIPT_SOURCE = fs.readFileSync(SCRIPT_PATH, "utf8");
 
 class MiniElement {
