@@ -3,14 +3,6 @@
 const COPY_LABEL = "Copy code";
 const IDLE_TEXT = "Copy";
 const COPIED_TEXT = "Copied";
-const COPY_FOUNDATION_PROVENANCE = Object.freeze({
-  reviewedIssue: "#81",
-  reviewedRef:
-    "devloop/issue/ChronoAIProject/fkst-website/81/ready-consensus-github-devloop-issue-ChronoAIProject-fkst-website-81-2026-07-03T18-49-27Z-replay-loop-1-2821807451@685dae7",
-  status: "absent",
-  evidence:
-    "The reviewed #81 tree contains no clipboard helper, no code-block copy renderer rule, and no data-code-block-copy selectors; this module is the single code-block copy scaffold in the current markdown rendering path.",
-});
 
 function wrapRenderedCodeBlock(renderedCodeBlock) {
   return [
@@ -60,6 +52,5 @@ function addCodeBlockCopyControls(markdownLibrary) {
 
 module.exports = {
   addCodeBlockCopyControls,
-  COPY_FOUNDATION_PROVENANCE,
   wrapRenderedCodeBlock,
 };
