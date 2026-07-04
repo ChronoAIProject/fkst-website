@@ -1,10 +1,21 @@
 const markdownIt = require("markdown-it");
 const { addCodeBlockCopyControls } = require("./lib/codeBlockCopy");
+const {
+  addExternalLinkMarkers,
+  externalLinkMarker,
+  isExternalLinkTarget,
+  shouldUseEleventyUrlFilter,
+} = require("./lib/externalLinks");
 const { estimateReadingTime } = require("./src/_includes/utils/reading-time");
 
 module.exports = function (eleventyConfig) {
-  const markdownLibrary = addCodeBlockCopyControls(markdownIt({ html: true }));
+  const markdownLibrary = addExternalLinkMarkers(
+    addCodeBlockCopyControls(markdownIt({ html: true }))
+  );
 
+  eleventyConfig.addFilter("externalLinkMarker", externalLinkMarker);
+  eleventyConfig.addFilter("isExternalLink", isExternalLinkTarget);
+  eleventyConfig.addFilter("shouldUseEleventyUrl", shouldUseEleventyUrlFilter);
   eleventyConfig.addFilter("readingTime", estimateReadingTime);
   eleventyConfig.addPassthroughCopy({ "src/assets": "assets" });
   eleventyConfig.addPassthroughCopy("probe-manifest");
