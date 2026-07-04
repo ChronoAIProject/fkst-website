@@ -7,6 +7,13 @@
   const isSupportedTheme = (value) => supportedThemes.includes(value);
   const resolveTheme = (value) => (isSupportedTheme(value) ? value : defaultTheme);
   const nextTheme = (value) => (resolveTheme(value) === "dark" ? "light" : "dark");
+  const systemTheme = () => {
+    try {
+      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : defaultTheme;
+    } catch (_error) {
+      return defaultTheme;
+    }
+  };
 
   const storage = () => {
     try {
@@ -16,18 +23,21 @@
     }
   };
 
-  const readTheme = () => {
+  const readStoredTheme = () => {
     const localStorage = storage();
     if (!localStorage) {
-      return defaultTheme;
+      return null;
     }
 
     try {
-      return resolveTheme(localStorage.getItem(storageKey));
+      const storedTheme = localStorage.getItem(storageKey);
+      return isSupportedTheme(storedTheme) ? storedTheme : null;
     } catch (_error) {
-      return defaultTheme;
+      return null;
     }
   };
+
+  const readTheme = () => readStoredTheme() || systemTheme();
 
   const updateToggle = (button, theme) => {
     if (!button) {
@@ -54,6 +64,16 @@
     return theme;
   };
 
+  const clearThemeOverride = () => {
+    const theme = readTheme();
+    document.documentElement.removeAttribute(themeAttribute);
+    document.documentElement.style.colorScheme = "";
+    document.querySelectorAll(toggleSelector).forEach((button) => {
+      updateToggle(button, theme);
+    });
+    return theme;
+  };
+
   const persistTheme = (value) => {
     const theme = resolveTheme(value);
     const localStorage = storage();
@@ -73,11 +93,15 @@
     return theme;
   };
 
-  const activeTheme = () => resolveTheme(document.documentElement.getAttribute(themeAttribute));
+  const activeTheme = () => {
+    const activeOverride = document.documentElement.getAttribute(themeAttribute);
+    return isSupportedTheme(activeOverride) ? activeOverride : readTheme();
+  };
 
   const initThemeToggle = () => {
     const buttons = document.querySelectorAll(toggleSelector);
-    const theme = applyTheme(readTheme());
+    const storedTheme = readStoredTheme();
+    const theme = storedTheme ? applyTheme(storedTheme) : clearThemeOverride();
     buttons.forEach((button) => {
       button.addEventListener("click", () => {
         setTheme(nextTheme(activeTheme()));

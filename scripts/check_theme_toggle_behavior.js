@@ -84,6 +84,23 @@ function createHarness(options = {}) {
       }
     });
   }
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    value(query) {
+      return {
+        addEventListener() {},
+        addListener() {},
+        dispatchEvent() {
+          return false;
+        },
+        matches: Boolean(options.prefersDark) && query === "(prefers-color-scheme: dark)",
+        media: query,
+        onchange: null,
+        removeEventListener() {},
+        removeListener() {}
+      };
+    }
+  });
 
   window.eval(SCRIPT_SOURCE);
   window.document.dispatchEvent(new window.Event("DOMContentLoaded"));
@@ -142,18 +159,35 @@ function testBuiltPagesIncludeOneEnabledToggleAndScript() {
   }
 }
 
-function testDefaultThemeInitializesToggle() {
+function testMissingThemeLeavesSystemFallbackInControl() {
   const { document, errors, window } = createHarness();
   const button = document.querySelector("[data-theme-toggle-button]");
 
   assert.equal(window.fkstTheme.defaultTheme, "light");
   assert.deepEqual([...window.fkstTheme.supportedThemes], ["light", "dark"]);
-  assert.equal(document.documentElement.getAttribute("data-theme"), "light");
-  assert.equal(document.documentElement.style.colorScheme, "light");
+  assert.equal(window.fkstTheme.readTheme(), "light");
+  assert.equal(document.documentElement.hasAttribute("data-theme"), false);
+  assert.equal(document.documentElement.style.colorScheme, "");
   assert.deepEqual(buttonState(button), {
     ariaChecked: "false",
     ariaLabel: "Switch to dark theme",
     dataTheme: "light",
+    disabled: false
+  });
+  assertNoClientErrors(errors);
+}
+
+function testMissingThemeReflectsSystemDarkWithoutOverride() {
+  const { document, errors, window } = createHarness({ prefersDark: true });
+  const button = document.querySelector("[data-theme-toggle-button]");
+
+  assert.equal(window.fkstTheme.readTheme(), "dark");
+  assert.equal(document.documentElement.hasAttribute("data-theme"), false);
+  assert.equal(document.documentElement.style.colorScheme, "");
+  assert.deepEqual(buttonState(button), {
+    ariaChecked: "true",
+    ariaLabel: "Switch to light theme",
+    dataTheme: "dark",
     disabled: false
   });
   assertNoClientErrors(errors);
@@ -179,8 +213,21 @@ function testInvalidPersistedThemeFallsBack() {
   const button = document.querySelector("[data-theme-toggle-button]");
 
   assert.equal(window.fkstTheme.readTheme(), "light");
-  assert.equal(document.documentElement.getAttribute("data-theme"), "light");
+  assert.equal(document.documentElement.hasAttribute("data-theme"), false);
   assert.equal(button.getAttribute("aria-checked"), "false");
+  assertNoClientErrors(errors);
+}
+
+function testInvalidPersistedThemeReflectsSystemDarkWithoutOverride() {
+  const { document, errors, window } = createHarness({
+    localStorageValue: "solarized",
+    prefersDark: true
+  });
+  const button = document.querySelector("[data-theme-toggle-button]");
+
+  assert.equal(window.fkstTheme.readTheme(), "dark");
+  assert.equal(document.documentElement.hasAttribute("data-theme"), false);
+  assert.equal(button.getAttribute("aria-checked"), "true");
   assertNoClientErrors(errors);
 }
 
@@ -213,16 +260,20 @@ function testClickTogglesAndPersists() {
 }
 
 function testStorageUnavailableDoesNotThrow() {
-  const { document, errors, window } = createHarness({ localStorageThrows: true });
+  const { document, errors, window } = createHarness({
+    localStorageThrows: true,
+    prefersDark: true
+  });
   const button = document.querySelector("[data-theme-toggle-button]");
 
-  assert.equal(window.fkstTheme.readTheme(), "light");
-  assert.equal(document.documentElement.getAttribute("data-theme"), "light");
+  assert.equal(window.fkstTheme.readTheme(), "dark");
+  assert.equal(document.documentElement.hasAttribute("data-theme"), false);
+  assert.equal(button.getAttribute("aria-checked"), "true");
 
   button.click();
 
-  assert.equal(document.documentElement.getAttribute("data-theme"), "dark");
-  assert.equal(button.getAttribute("aria-checked"), "true");
+  assert.equal(document.documentElement.getAttribute("data-theme"), "light");
+  assert.equal(button.getAttribute("aria-checked"), "false");
   assertNoClientErrors(errors);
 }
 
@@ -256,9 +307,11 @@ function testStylesheetExposesExplicitThemeHooks() {
 function main() {
   const tests = [
     testBuiltPagesIncludeOneEnabledToggleAndScript,
-    testDefaultThemeInitializesToggle,
+    testMissingThemeLeavesSystemFallbackInControl,
+    testMissingThemeReflectsSystemDarkWithoutOverride,
     testPersistedDarkThemeRestores,
     testInvalidPersistedThemeFallsBack,
+    testInvalidPersistedThemeReflectsSystemDarkWithoutOverride,
     testClickTogglesAndPersists,
     testStorageUnavailableDoesNotThrow,
     testStorageWriteFailureStillAppliesTheme,
