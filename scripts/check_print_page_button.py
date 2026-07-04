@@ -123,7 +123,7 @@ def check_stylesheet(failures: list[str]) -> None:
     style = compact(STYLE_OUTPUT.read_text(encoding="utf-8"))
     for needle in (
         "@media print",
-        ".site-header, .site-footer, .back-to-top-button, .code-block-copy-button, .code-block-copy-status, .repo-actions { display: none !important;",
+        ".site-header, .site-footer, .article-scroll-progress, .back-to-top-button, .code-block-copy-button, .code-block-copy-status, .repo-actions { display: none !important;",
         "main, .hero, .features, .page-header, .page-content { margin: 0; max-width: none; padding: 0; width: 100%;",
         "background: #ffffff !important;",
         "main a[href]:not([href^=\"#\"])::after { content: \" (\" attr(href) \")\";",

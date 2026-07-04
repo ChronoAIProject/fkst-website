@@ -303,6 +303,21 @@ h1 {
   margin: 0 0 22px;
 }
 
+.article-scroll-progress {
+  background: color-mix(in srgb, var(--line) 65%, transparent);
+  height: 4px;
+  inset: 0 0 auto;
+  pointer-events: none;
+  position: fixed;
+  z-index: 30;
+}
+
+.article-scroll-progress-bar {
+  background: var(--accent);
+  height: 100%;
+  width: var(--article-scroll-progress, 0%);
+}
+
 .page-intro {
   color: var(--muted);
   font-size: clamp(1.05rem, 2vw, 1.25rem);
@@ -605,6 +620,7 @@ h2 {
 
   .site-header,
   .site-footer,
+  .article-scroll-progress,
   .back-to-top-button,
   .code-block-copy-button,
   .code-block-copy-status,

@@ -1,6 +1,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
+{% include "components/ArticleScrollProgress.njk" %}
 <section class="page-header article-header" aria-labelledby="page-title">
   {% if articleEyebrow %}
     <p class="eyebrow">{{ articleEyebrow }}</p>
@@ -15,7 +16,11 @@
   {% endif %}
 </section>
 
-<div class="page-content">
+<div class="page-content" data-article-scroll-content>
 {{ content | safe }}
 </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ "/assets/js/article-scroll-progress.js" | url }}" defer data-article-scroll-progress-script></script>
 {% endblock %}

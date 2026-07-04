@@ -1,0 +1,14 @@
+{% set progressLabel = "文章阅读进度" if lang == "zh-Hans" else "Article reading progress" %}
+<div
+  class="article-scroll-progress"
+  role="progressbar"
+  data-article-scroll-progress
+  data-article-scroll-progress-value="0"
+  aria-label="{{ progressLabel }}"
+  aria-valuemin="0"
+  aria-valuemax="100"
+  aria-valuenow="0"
+  style="--article-scroll-progress: 0%;"
+>
+  <div class="article-scroll-progress-bar" aria-hidden="true"></div>
+</div>
