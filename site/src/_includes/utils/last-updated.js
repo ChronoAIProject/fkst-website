@@ -8,6 +8,10 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("en", {
   year: "numeric"
 });
 
+// Audit for #127/#134: the local issue bundle names prior #76/#84 same-class
+// work, but checked-in source has no reusable last-updated module, filter,
+// front-matter contract, footer render path, or smoke check. This utility is
+// the canonical scaffold surface for the shared footer metadata contract.
 function dateOnlyFromParts(year, month, day) {
   const date = new Date(Date.UTC(year, month - 1, day));
   if (
