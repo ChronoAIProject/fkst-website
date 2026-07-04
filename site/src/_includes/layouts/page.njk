@@ -1,18 +1,5 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-{% set articleContent %}
 {{ content | safe }}
-{% endset %}
-{% if hasTableOfContents %}
-  {% set tableOfContents = articleContent | tocEntries %}
-  <div class="article-shell">
-    <div class="article-main">
-      {{ articleContent | safe }}
-    </div>
-    {% include "components/TableOfContents.njk" %}
-  </div>
-{% else %}
-  {{ articleContent | safe }}
-{% endif %}
 {% endblock %}
