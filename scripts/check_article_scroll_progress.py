@@ -10,6 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SITE_DIR = ROOT / "site" / "_site"
 STYLE_OUTPUT = SITE_DIR / "assets" / "css" / "style.css"
+PRINT_STYLE_OUTPUT = SITE_DIR / "assets" / "css" / "docs-print.css"
 SCRIPT_SOURCE = ROOT / "site" / "src" / "assets" / "js" / "article-scroll-progress.js"
 SCRIPT_OUTPUT = SITE_DIR / "assets" / "js" / "article-scroll-progress.js"
 ARTICLE_ROUTES = (
@@ -161,8 +162,15 @@ def check_stylesheet(failures: list[str]) -> None:
     if not STYLE_OUTPUT.is_file():
         failures.append(f"missing built stylesheet {STYLE_OUTPUT}")
         return
+    if not PRINT_STYLE_OUTPUT.is_file():
+        failures.append(f"missing built print stylesheet {PRINT_STYLE_OUTPUT}")
+        return
 
-    style = compact(STYLE_OUTPUT.read_text(encoding="utf-8"))
+    style = compact(
+        STYLE_OUTPUT.read_text(encoding="utf-8")
+        + "\n"
+        + PRINT_STYLE_OUTPUT.read_text(encoding="utf-8")
+    )
     for needle in (
         ".article-scroll-progress",
         "position: fixed;",

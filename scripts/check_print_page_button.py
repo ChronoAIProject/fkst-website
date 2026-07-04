@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SITE_DIR = ROOT / "site" / "_site"
 MANIFEST = ROOT / "site" / "probe-manifest"
 STYLE_OUTPUT = SITE_DIR / "assets" / "css" / "style.css"
+PRINT_STYLE_OUTPUT = SITE_DIR / "assets" / "css" / "docs-print.css"
 
 
 class PrintPageParser(HTMLParser):
@@ -119,8 +120,15 @@ def check_stylesheet(failures: list[str]) -> None:
     if not STYLE_OUTPUT.is_file():
         failures.append(f"missing built stylesheet {STYLE_OUTPUT}")
         return
+    if not PRINT_STYLE_OUTPUT.is_file():
+        failures.append(f"missing built print stylesheet {PRINT_STYLE_OUTPUT}")
+        return
 
-    style = compact(STYLE_OUTPUT.read_text(encoding="utf-8"))
+    style = compact(
+        STYLE_OUTPUT.read_text(encoding="utf-8")
+        + "\n"
+        + PRINT_STYLE_OUTPUT.read_text(encoding="utf-8")
+    )
     for needle in (
         "@media print",
         ".site-header, .site-footer, .article-scroll-progress, .docs-sidebar, .back-to-top-button, .code-block-copy-button, .code-block-copy-status, .repo-actions { display: none !important;",
