@@ -26,18 +26,21 @@
           {% endif %}
         {% endfor %}
       </nav>
-      <div class="language-switch" aria-label="Language">
-        {% for item in languageSwitch %}
-          {% if item.current %}
-            <span aria-current="page">{{ item.label }}</span>
-          {% else %}
-            {% if item.href | shouldUseEleventyUrl %}
-              <a href="{{ item.href | url }}">{{ item.label }}</a>
+      <div class="header-actions">
+        <div class="language-switch" aria-label="Language">
+          {% for item in languageSwitch %}
+            {% if item.current %}
+              <span aria-current="page">{{ item.label }}</span>
             {% else %}
-              <a href="{{ item.href }}">{{ item.label }}{{ item.href | externalLinkMarker | safe }}</a>
+              {% if item.href | shouldUseEleventyUrl %}
+                <a href="{{ item.href | url }}">{{ item.label }}</a>
+              {% else %}
+                <a href="{{ item.href }}">{{ item.label }}{{ item.href | externalLinkMarker | safe }}</a>
+              {% endif %}
             {% endif %}
-          {% endif %}
-        {% endfor %}
+          {% endfor %}
+        </div>
+        {% include "components/PrintPageButton.njk" %}
       </div>
     </header>
 
