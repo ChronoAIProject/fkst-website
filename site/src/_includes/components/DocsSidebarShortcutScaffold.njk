@@ -1,9 +1,6 @@
-{% if docsSidebarShortcut %}
 <template
   data-docs-sidebar-shortcut-scaffold
-  data-shortcut-action-id="{{ docsSidebarShortcut.id }}"
-  data-shortcut-keys="{{ docsSidebarShortcut.keys }}"
-  data-shortcut-storage-key="{{ docsSidebarShortcut.storageKey }}"
-  data-shortcut-enabled="{{ "true" if docsSidebarShortcut.enabled else "false" }}"
+  data-shortcut-action-id="toggle-docs-sidebar"
+  data-shortcut-keys="Cmd/Ctrl+B"
+  data-shortcut-enabled="false"
 ></template>
-{% endif %}

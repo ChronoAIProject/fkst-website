@@ -2,67 +2,50 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const test = require("node:test");
 
-const {
-  DOCS_SIDEBAR_PERSISTENCE_KEY,
-  DOCS_SIDEBAR_SHORTCUT_ACTION,
-  DOCS_SIDEBAR_SHORTCUT_ID,
-  DOCS_SIDEBAR_SHORTCUT_KEYS,
-  createDocsSidebarShortcutRegistration,
-  shortcutActions,
-  visibleShortcutActions,
-} = require("../lib/shortcutActions");
-const docsSidebarShortcut = require("../src/_data/docsSidebarShortcut");
-const keyboardShortcuts = require("../src/_data/keyboardShortcuts");
+const ROOT = path.resolve(__dirname, "..", "..");
+const SITE_ROOT = path.join(ROOT, "site");
+const TEMPLATE_PATH = path.join(
+  SITE_ROOT,
+  "src",
+  "_includes",
+  "components",
+  "DocsSidebarShortcutScaffold.njk"
+);
+const KEYBOARD_SHORTCUTS = require("../src/_data/keyboardShortcuts");
 
-test("docs sidebar shortcut scaffold exports inert owner registration metadata", () => {
-  const registration = createDocsSidebarShortcutRegistration();
+function readUtf8(filePath) {
+  return fs.readFileSync(filePath, "utf8");
+}
 
-  assert.equal(DOCS_SIDEBAR_SHORTCUT_ID, "toggle-docs-sidebar");
-  assert.equal(DOCS_SIDEBAR_SHORTCUT_KEYS, "Cmd/Ctrl+B");
-  assert.equal(DOCS_SIDEBAR_PERSISTENCE_KEY, "fkst-docs-sidebar-open");
-  assert.deepEqual(
-    {
-      enabled: registration.enabled,
-      id: registration.id,
-      keys: registration.keys,
-      open: registration.open,
-      storageKey: registration.storageKey,
-    },
-    {
-      enabled: false,
-      id: DOCS_SIDEBAR_SHORTCUT_ID,
-      keys: DOCS_SIDEBAR_SHORTCUT_KEYS,
-      open: false,
-      storageKey: DOCS_SIDEBAR_PERSISTENCE_KEY,
-    }
-  );
+test("docs sidebar shortcut scaffold stays owner-local and inert", () => {
+  const template = readUtf8(TEMPLATE_PATH);
 
-  assert.doesNotThrow(() => registration.setOpen(true));
-  assert.doesNotThrow(() => registration.toggle());
+  assert.match(template, /data-docs-sidebar-shortcut-scaffold/);
+  assert.match(template, /data-shortcut-action-id="toggle-docs-sidebar"/);
+  assert.match(template, /data-shortcut-keys="Cmd\/Ctrl\+B"/);
+  assert.match(template, /data-shortcut-enabled="false"/);
+  assert.doesNotMatch(template, /storage|setOpen|toggle\(/);
 });
 
-test("docs sidebar action is registered but hidden until behavior is implemented", () => {
-  assert.equal(shortcutActions.includes(DOCS_SIDEBAR_SHORTCUT_ACTION), true);
-  assert.equal(DOCS_SIDEBAR_SHORTCUT_ACTION.enabled, false);
+test("shortcut help metadata is not widened for the docs sidebar scaffold", () => {
   assert.equal(
-    visibleShortcutActions().some((action) => action.id === DOCS_SIDEBAR_SHORTCUT_ID),
+    KEYBOARD_SHORTCUTS.items.some((shortcut) => shortcut.id === "toggle-docs-sidebar"),
     false
   );
-  assert.equal(
-    keyboardShortcuts.items.some((action) => action.id === DOCS_SIDEBAR_SHORTCUT_ID),
-    false
-  );
-  assert.equal(
-    keyboardShortcuts.actions.some((action) => action.id === DOCS_SIDEBAR_SHORTCUT_ID),
-    true
-  );
+  assert.equal(Object.hasOwn(KEYBOARD_SHORTCUTS, "actions"), false);
 });
 
-test("docs sidebar data surface can initialize for the article shell without throwing", () => {
-  assert.equal(docsSidebarShortcut.id, DOCS_SIDEBAR_SHORTCUT_ID);
-  assert.equal(docsSidebarShortcut.keys, DOCS_SIDEBAR_SHORTCUT_KEYS);
-  assert.equal(docsSidebarShortcut.storageKey, DOCS_SIDEBAR_PERSISTENCE_KEY);
-  assert.equal(docsSidebarShortcut.enabled, false);
+test("docs sidebar shortcut scaffold does not add a shared action registry", () => {
+  const forbiddenPaths = [
+    path.join(SITE_ROOT, "lib", "shortcutActions.js"),
+    path.join(SITE_ROOT, "src", "_data", "docsSidebarShortcut.js"),
+  ];
+
+  for (const forbiddenPath of forbiddenPaths) {
+    assert.equal(fs.existsSync(forbiddenPath), false, forbiddenPath);
+  }
 });
