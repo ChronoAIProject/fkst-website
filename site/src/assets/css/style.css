@@ -441,6 +441,104 @@ h1 {
   max-width: 760px;
 }
 
+.article-shell {
+  display: grid;
+  gap: 28px;
+  grid-template-columns: minmax(180px, 0.32fr) minmax(0, 1fr);
+  margin-inline: auto;
+  max-width: 1120px;
+  padding-inline: clamp(20px, 5vw, 48px);
+}
+
+.article-shell[data-docs-sidebar-state="closed"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.article-shell .page-content {
+  margin-inline: 0;
+  max-width: none;
+  padding-inline: 0;
+}
+
+.docs-sidebar {
+  align-self: start;
+  display: grid;
+  gap: 14px;
+  position: sticky;
+  top: 22px;
+}
+
+.docs-sidebar-header {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.docs-sidebar h2 {
+  font-size: 0.84rem;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.docs-sidebar-toggle {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 750;
+  min-height: 32px;
+  padding: 5px 9px;
+}
+
+.docs-sidebar-toggle:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.docs-sidebar-toggle:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.docs-sidebar-panel[hidden] {
+  display: none;
+}
+
+.docs-sidebar-list {
+  border-left: 1px solid var(--line);
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 2px 0 2px 14px;
+}
+
+.docs-sidebar-list a {
+  color: var(--muted);
+  display: inline-flex;
+  font-size: 0.92rem;
+  line-height: 1.35;
+  text-decoration: none;
+}
+
+.docs-sidebar-list a:hover,
+.docs-sidebar-list a:focus-visible {
+  color: var(--accent-strong);
+  text-decoration: underline;
+}
+
+.docs-sidebar[data-docs-sidebar-empty] {
+  display: none;
+}
+
 .page-content {
   display: grid;
   gap: 18px;
@@ -824,8 +922,13 @@ h2 {
     grid-template-columns: 1fr;
   }
 
+  .article-shell,
   .content-section {
     grid-template-columns: 1fr;
+  }
+
+  .docs-sidebar {
+    position: static;
   }
 
   .feature-card {
@@ -887,6 +990,7 @@ h2 {
   .site-header,
   .site-footer,
   .article-scroll-progress,
+  .docs-sidebar,
   .back-to-top-button,
   .code-block-copy-button,
   .code-block-copy-status,
@@ -898,6 +1002,7 @@ h2 {
   .hero,
   .features,
   .page-header,
+  .article-shell,
   .page-content {
     margin: 0;
     max-width: none;

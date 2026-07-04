@@ -15,6 +15,12 @@ const items = [
     description: "Shows this keyboard shortcut reference.",
   },
   {
+    id: "toggle-docs-sidebar",
+    keys: "Cmd/Ctrl+B",
+    label: "Toggle docs sidebar",
+    description: "Shows or hides the article section sidebar.",
+  },
+  {
     id: "focus-primary-navigation",
     keys: "g n",
     label: "Focus primary navigation",
@@ -30,6 +36,6 @@ const items = [
 
 module.exports = {
   heading: "Keyboard shortcuts",
-  summary: "A reference scaffold for site keyboard shortcuts.",
+  summary: "A reference for site keyboard shortcuts.",
   items,
 };

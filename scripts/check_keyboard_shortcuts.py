@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Smoke-check the rendered keyboard shortcut help scaffold."""
+"""Smoke-check rendered keyboard shortcuts and article docs sidebar markup."""
 
 from __future__ import annotations
 
@@ -27,8 +27,15 @@ AUDIT_PATTERN = (
 )
 EXPECTED_SHORTCUTS = {
     "open-shortcut-help": ("?", "Open keyboard shortcut help"),
+    "toggle-docs-sidebar": ("Cmd/Ctrl+B", "Toggle docs sidebar"),
     "focus-primary-navigation": ("g n", "Focus primary navigation"),
     "return-to-top": ("g t", "Return to top"),
+}
+ARTICLE_ROUTES = {
+    "/architecture.html",
+    "/doctrine.html",
+    "/zh/architecture.html",
+    "/zh/doctrine.html",
 }
 
 
@@ -42,6 +49,11 @@ class KeyboardShortcutParser(HTMLParser):
         self.title_text: list[str] = []
         self.summary_text: list[str] = []
         self.shortcut_text: dict[str, list[str]] = {}
+        self.docs_sidebar_count = 0
+        self.docs_sidebar_toggle_count = 0
+        self.docs_sidebar_panel_count = 0
+        self.docs_sidebar_list_count = 0
+        self.docs_sidebar_script_count = 0
         self._in_title = False
         self._in_summary = False
         self._current_shortcut: str | None = None
@@ -70,6 +82,22 @@ class KeyboardShortcutParser(HTMLParser):
         if shortcut_id:
             self._current_shortcut = shortcut_id
             self.shortcut_text.setdefault(shortcut_id, [])
+        if "data-docs-sidebar" in attr:
+            self.docs_sidebar_count += 1
+            if attr.get("aria-labelledby") != "docs-sidebar-heading":
+                self.shortcut_text.setdefault("[docs-sidebar]", []).append("[missing-labelledby]")
+        if tag == "button" and "data-docs-sidebar-toggle" in attr:
+            self.docs_sidebar_toggle_count += 1
+            if attr.get("aria-controls") != "docs-sidebar-panel":
+                self.shortcut_text.setdefault("[docs-sidebar-toggle]", []).append("[missing-controls]")
+            if attr.get("aria-expanded") != "true":
+                self.shortcut_text.setdefault("[docs-sidebar-toggle]", []).append("[missing-expanded]")
+        if "data-docs-sidebar-panel" in attr:
+            self.docs_sidebar_panel_count += 1
+        if "data-docs-sidebar-list" in attr:
+            self.docs_sidebar_list_count += 1
+        if tag == "script" and "data-docs-sidebar-script" in attr:
+            self.docs_sidebar_script_count += 1
 
     def handle_endtag(self, tag: str) -> None:
         if tag == "h2":
@@ -168,12 +196,28 @@ def main() -> int:
             failures.append(f"{route}: shortcut help close button should remain disabled in the scaffold")
         if normalized_text(parser.title_text) != "Keyboard shortcuts":
             failures.append(f"{route}: missing Keyboard shortcuts title")
-        if "reference scaffold" not in normalized_text(parser.summary_text):
-            failures.append(f"{route}: missing shortcut scaffold summary")
+        if "site keyboard shortcuts" not in normalized_text(parser.summary_text):
+            failures.append(f"{route}: missing shortcut help summary")
         for shortcut_id, (keys, label) in EXPECTED_SHORTCUTS.items():
             rendered = normalized_text(parser.shortcut_text.get(shortcut_id, []))
             if keys not in rendered or label not in rendered:
                 failures.append(f"{route}: missing shortcut entry {shortcut_id}")
+        if route in ARTICLE_ROUTES:
+            if parser.docs_sidebar_count != 1:
+                failures.append(f"{route}: expected 1 docs sidebar, found {parser.docs_sidebar_count}")
+            if parser.docs_sidebar_toggle_count != 1:
+                failures.append(f"{route}: expected 1 docs sidebar toggle, found {parser.docs_sidebar_toggle_count}")
+            if parser.docs_sidebar_panel_count != 1:
+                failures.append(f"{route}: expected 1 docs sidebar panel, found {parser.docs_sidebar_panel_count}")
+            if parser.docs_sidebar_list_count != 1:
+                failures.append(f"{route}: expected 1 docs sidebar list, found {parser.docs_sidebar_list_count}")
+            if parser.docs_sidebar_script_count != 1:
+                failures.append(f"{route}: expected 1 docs sidebar script, found {parser.docs_sidebar_script_count}")
+        else:
+            if parser.docs_sidebar_count:
+                failures.append(f"{route}: non-article page rendered docs sidebar")
+            if parser.docs_sidebar_script_count:
+                failures.append(f"{route}: non-article page included docs sidebar script")
 
     if not STYLE_OUTPUT.is_file():
         failures.append(f"missing built stylesheet {STYLE_OUTPUT}")
@@ -183,9 +227,13 @@ def main() -> int:
             ".keyboard-shortcut-overlay",
             ".keyboard-shortcut-panel",
             ".keyboard-shortcut-list",
+            ".docs-sidebar",
+            ".docs-sidebar-toggle",
+            ".docs-sidebar-panel[hidden]",
+            ".article-shell[data-docs-sidebar-state=\"closed\"]",
         ):
             if needle not in style:
-                failures.append(f"stylesheet missing keyboard shortcut rule: {needle}")
+                failures.append(f"stylesheet missing keyboard/sidebar rule: {needle}")
 
     if failures:
         for failure in failures:
