@@ -23,12 +23,17 @@ class CodeBlockCopyParser(HTMLParser):
         self.wrapper_count = 0
         self.button_count = 0
         self.disabled_buttons = 0
+        self.hidden_buttons = 0
         self.status_count = 0
         self.script_present = False
         self._in_wrapper = 0
         self._in_button = False
         self._in_status = False
         self._in_code = False
+        self.wrapper_text: list[str] = []
+        self.wrapper_language: list[str] = []
+        self.wrapper_info: list[str] = []
+        self.wrapper_kind: list[str] = []
         self.button_text: list[str] = []
         self.status_text: list[str] = []
         self.code_text: list[str] = []
@@ -38,11 +43,17 @@ class CodeBlockCopyParser(HTMLParser):
         if tag == "div" and "data-code-block-copy" in attr:
             self.wrapper_count += 1
             self._in_wrapper += 1
+            self.wrapper_text.append(attr.get("data-code-block-copy-text", ""))
+            self.wrapper_language.append(attr.get("data-code-block-copy-language", ""))
+            self.wrapper_info.append(attr.get("data-code-block-copy-info", ""))
+            self.wrapper_kind.append(attr.get("data-code-block-copy-kind", ""))
         if self._in_wrapper and tag == "button" and "data-code-block-copy-button" in attr:
             self.button_count += 1
             self._in_button = True
             if "disabled" in attr:
                 self.disabled_buttons += 1
+            if "hidden" in attr:
+                self.hidden_buttons += 1
         if self._in_wrapper and tag == "span" and "data-code-block-copy-status" in attr:
             self.status_count += 1
             self._in_status = True
@@ -124,8 +135,10 @@ def main() -> int:
             failures.append(f"expected 2 code-block wrappers, found {parser.wrapper_count}")
         if parser.button_count != 2:
             failures.append(f"expected 2 code-block copy buttons, found {parser.button_count}")
-        if parser.disabled_buttons:
-            failures.append(f"expected built copy buttons to be enabled, found {parser.disabled_buttons} disabled")
+        if parser.disabled_buttons != 2:
+            failures.append(f"expected 2 inert server-rendered copy buttons, found {parser.disabled_buttons}")
+        if parser.hidden_buttons != 2:
+            failures.append(f"expected 2 hidden server-rendered copy buttons, found {parser.hidden_buttons}")
         if parser.status_count != 2:
             failures.append(f"expected 2 live status elements, found {parser.status_count}")
         if not parser.script_present:
@@ -137,6 +150,14 @@ def main() -> int:
         expected_code = "printf 'fenced'\nprintf 'indented'\n"
         if "".join(parser.code_text) != expected_code:
             failures.append("rendered copy source text does not match the code-only contents")
+        if parser.wrapper_text != ["printf 'fenced'\n", "printf 'indented'\n"]:
+            failures.append("code-block copy source contract does not expose exact code text")
+        if parser.wrapper_language != ["sh", ""]:
+            failures.append("code-block copy source contract does not expose language metadata")
+        if parser.wrapper_info != ["sh", ""]:
+            failures.append("code-block copy source contract does not expose info metadata")
+        if parser.wrapper_kind != ["fence", "code_block"]:
+            failures.append("code-block copy source contract does not expose block kind metadata")
 
     if not SCRIPT_OUTPUT.is_file():
         failures.append(f"missing built script asset {SCRIPT_OUTPUT}")
@@ -145,12 +166,15 @@ def main() -> int:
         for needle in (
             "navigator.clipboard.writeText",
             'document.execCommand("copy")',
+            'wrapper.getAttribute("data-code-block-copy-text")',
             "[data-code-block-copy-button]",
-            "button.disabled = false",
+            "button.hidden = false",
             "Copy failed",
         ):
             if needle not in script:
                 failures.append(f"script missing activation contract: {needle}")
+        if 'querySelector("pre code")' in script or "textContent || \"\"" in script:
+            failures.append("script must use renderer-provided code text instead of DOM code text")
 
     if not STYLE_OUTPUT.is_file():
         failures.append(f"missing built stylesheet {STYLE_OUTPUT}")

@@ -60,15 +60,29 @@ function escapeHtml(value) {
 function codeWrapper(text, options = {}) {
   const button = options.button === false
     ? ""
-    : '<button type="button" data-code-block-copy-button>Copy</button>';
+    : '<button type="button" data-code-block-copy-button disabled hidden>Copy</button>';
   const status = options.status === false
     ? ""
     : `<span data-code-block-copy-status>${escapeHtml(options.statusText || "")}</span>`;
   const code = options.code === false
     ? ""
-    : `<pre><code>${escapeHtml(text)}</code></pre>`;
+    : `<pre><code>${escapeHtml(options.codeText ?? text)}</code></pre>`;
+  const copyText = options.sourceText === undefined
+    ? ` data-code-block-copy-text="${escapeHtml(text)}"`
+    : options.sourceText === null
+      ? ""
+      : ` data-code-block-copy-text="${escapeHtml(options.sourceText)}"`;
+  const language = options.language === undefined
+    ? ""
+    : ` data-code-block-copy-language="${escapeHtml(options.language)}"`;
+  const info = options.info === undefined
+    ? ""
+    : ` data-code-block-copy-info="${escapeHtml(options.info)}"`;
+  const kind = options.kind === undefined
+    ? ""
+    : ` data-code-block-copy-kind="${escapeHtml(options.kind)}"`;
 
-  return `<div data-code-block-copy>${button}${status}${code}</div>`;
+  return `<div data-code-block-copy${copyText}${language}${info}${kind}>${button}${status}${code}</div>`;
 }
 
 function getButton(wrapper) {
@@ -191,6 +205,7 @@ async function testCopiesOnlyClickedBlock() {
   const { calls, document, errors } = createHarness([
     codeWrapper("first block\n"),
     codeWrapper("second block\n", {
+      codeText: "nested DOM code text must not be copied\n",
       statusText: "status text must not be copied"
     })
   ]);
@@ -202,6 +217,7 @@ async function testCopiesOnlyClickedBlock() {
   assert.deepEqual(calls.writeText, ["second block\n"]);
   assert.equal(calls.writeText[0].includes("Copy"), false);
   assert.equal(calls.writeText[0].includes("status text must not be copied"), false);
+  assert.equal(calls.writeText[0].includes("nested DOM code text must not be copied"), false);
   assert.equal(calls.execCommand.length, 0);
   assertCopied(second);
   assert.equal(getButton(first).getAttribute("data-copy-state"), null);
@@ -286,7 +302,7 @@ async function testFailureWhenAllCopyPathsFail() {
   assertIdle(wrapper);
 }
 
-async function testIncompleteWrappersDoNothing() {
+async function testIncompleteWrappersOnlyActivateWithSourceContract() {
   const { calls, document, errors } = createHarness([
     codeWrapper("missing button\n", {
       button: false
@@ -294,22 +310,29 @@ async function testIncompleteWrappersDoNothing() {
     codeWrapper("missing status\n", {
       status: false
     }),
-    codeWrapper("", {
+    codeWrapper("source without nested code\n", {
       code: false
+    }),
+    codeWrapper("missing source contract\n", {
+      sourceText: null
     })
   ]);
-  const [missingButton, missingStatus, missingCode] = document.querySelectorAll("[data-code-block-copy]");
+  const [missingButton, missingStatus, sourceOnly, missingSource] = document.querySelectorAll("[data-code-block-copy]");
 
   await clickAndFlush(getButton(missingStatus));
-  await clickAndFlush(getButton(missingCode));
+  await clickAndFlush(getButton(sourceOnly));
+  await clickAndFlush(getButton(missingSource));
 
   assertNoClientErrors(errors);
-  assert.deepEqual(calls.writeText, []);
+  assert.deepEqual(calls.writeText, ["source without nested code\n"]);
   assert.deepEqual(calls.execCommand, []);
-  assert.equal(getButton(missingStatus).disabled, false);
-  assert.equal(getButton(missingCode).disabled, false);
+  assert.equal(getButton(missingStatus).disabled, true);
+  assert.equal(getButton(missingStatus).hidden, true);
+  assert.equal(getButton(sourceOnly).disabled, false);
+  assert.equal(getButton(missingSource).disabled, true);
+  assert.equal(getButton(missingSource).hidden, true);
   assert.equal(getStatus(missingButton).textContent, "");
-  assert.equal(getStatus(missingCode).textContent, "");
+  assertCopied(sourceOnly);
 }
 
 async function main() {
@@ -319,7 +342,7 @@ async function main() {
     testFallbackWhenWriteTextUnavailable,
     testFallbackAfterAsyncRejects,
     testFailureWhenAllCopyPathsFail,
-    testIncompleteWrappersDoNothing
+    testIncompleteWrappersOnlyActivateWithSourceContract
   ];
 
   for (const test of tests) {

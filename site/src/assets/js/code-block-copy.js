@@ -47,10 +47,10 @@
   wrappers.forEach((wrapper) => {
     const button = wrapper.querySelector("[data-code-block-copy-button]");
     const status = wrapper.querySelector("[data-code-block-copy-status]");
-    const code = wrapper.querySelector("pre code");
+    const text = wrapper.getAttribute("data-code-block-copy-text");
     let resetTimer = 0;
 
-    if (!(button instanceof HTMLButtonElement) || !status || !code) {
+    if (!(button instanceof HTMLButtonElement) || !status || text === null) {
       return;
     }
 
@@ -71,10 +71,11 @@
     };
 
     button.disabled = false;
+    button.hidden = false;
     button.addEventListener("click", async () => {
       button.disabled = true;
       try {
-        await writeClipboard(code.textContent || "");
+        await writeClipboard(text);
         setState("copied", copiedLabel);
       } catch {
         setState("failed", failedLabel);
