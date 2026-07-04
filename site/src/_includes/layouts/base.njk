@@ -21,7 +21,7 @@
             {% if item.href | shouldUseEleventyUrl %}
               <a href="{{ item.href | url }}">{{ item.label }}</a>
             {% else %}
-              <a href="{{ item.href }}">{{ item.label }}{{ item.href | externalLinkMarker | safe }}</a>
+              <a href="{{ item.href }}"{{ item.href | externalLinkAttributes | safe }}>{{ item.label }}{{ item.href | externalLinkMarker | safe }}</a>
             {% endif %}
           {% endif %}
         {% endfor %}
@@ -34,7 +34,7 @@
             {% if item.href | shouldUseEleventyUrl %}
               <a href="{{ item.href | url }}">{{ item.label }}</a>
             {% else %}
-              <a href="{{ item.href }}">{{ item.label }}{{ item.href | externalLinkMarker | safe }}</a>
+              <a href="{{ item.href }}"{{ item.href | externalLinkAttributes | safe }}>{{ item.label }}{{ item.href | externalLinkMarker | safe }}</a>
             {% endif %}
           {% endif %}
         {% endfor %}
@@ -50,7 +50,7 @@
         {% if footerHref | shouldUseEleventyUrl %}
           <p><a href="{{ footerHref | url }}">{{ footerLabel }}</a></p>
         {% else %}
-          <p><a href="{{ footerHref }}">{{ footerLabel }}{{ footerHref | externalLinkMarker | safe }}</a></p>
+          <p><a href="{{ footerHref }}"{{ footerHref | externalLinkAttributes | safe }}>{{ footerLabel }}{{ footerHref | externalLinkMarker | safe }}</a></p>
         {% endif %}
       {% else %}
         <p>{{ footerText }}</p>
