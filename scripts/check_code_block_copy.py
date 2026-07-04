@@ -82,7 +82,6 @@ def build_fixture() -> subprocess.CompletedProcess[str]:
             description: "Smoke fixture for code-block copy controls."
             brandHref: /
             nav: []
-            languageSwitch: []
             footerText: Smoke fixture
             ---
 
