@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Smoke-check rendered print page controls and print stylesheet rules."""
+"""Check rendered print page controls and print stylesheet rules."""
 
 from __future__ import annotations
 
@@ -20,21 +20,30 @@ class PrintPageParser(HTMLParser):
         self.button_count = 0
         self.script_count = 0
         self.control_count = 0
+        self.header_control_count = 0
+        self.header_button_count = 0
         self.button_labels: list[str] = []
         self.aria_labels: list[str] = []
         self.button_types: list[str] = []
         self.disabled_buttons = 0
+        self._in_header = False
         self._in_button = False
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attr = dict(attrs)
         if tag == "html":
             self.html_lang = attr.get("lang", "")
+        if tag == "header":
+            self._in_header = True
         if tag == "div" and "data-print-page-control" in attr:
             self.control_count += 1
+            if self._in_header:
+                self.header_control_count += 1
         if tag == "button" and "data-print-page-button" in attr:
             self.button_count += 1
             self._in_button = True
+            if self._in_header:
+                self.header_button_count += 1
             self.aria_labels.append(attr.get("aria-label", ""))
             self.button_types.append(attr.get("type", ""))
             if "disabled" in attr:
@@ -43,6 +52,8 @@ class PrintPageParser(HTMLParser):
             self.script_count += 1
 
     def handle_endtag(self, tag: str) -> None:
+        if tag == "header":
+            self._in_header = False
         if tag == "button":
             self._in_button = False
 
@@ -72,6 +83,28 @@ def compact(text: str) -> str:
     return " ".join(text.split())
 
 
+def css_block(css: str, marker: str) -> str:
+    start = css.find(marker)
+    if start < 0:
+        return ""
+
+    open_brace = css.find("{", start)
+    if open_brace < 0:
+        return ""
+
+    depth = 0
+    for index in range(open_brace, len(css)):
+        char = css[index]
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return css[open_brace + 1 : index]
+
+    return ""
+
+
 def check_page(route: str, failures: list[str]) -> None:
     path = output_path(route)
     if not path.is_file():
@@ -87,8 +120,14 @@ def check_page(route: str, failures: list[str]) -> None:
 
     if parser.control_count != 1:
         failures.append(f"{route}: expected 1 print control wrapper, found {parser.control_count}")
+    if parser.header_control_count != 1:
+        failures.append(
+            f"{route}: expected 1 header print control wrapper, found {parser.header_control_count}"
+        )
     if parser.button_count != 1:
         failures.append(f"{route}: expected 1 print button, found {parser.button_count}")
+    if parser.header_button_count != 1:
+        failures.append(f"{route}: expected 1 header print button, found {parser.header_button_count}")
     if parser.script_count != 1:
         failures.append(f"{route}: expected 1 print activation script, found {parser.script_count}")
     if parser.button_labels != [expected_label]:
@@ -120,21 +159,33 @@ def check_stylesheet(failures: list[str]) -> None:
         failures.append(f"missing built stylesheet {STYLE_OUTPUT}")
         return
 
-    style = compact(STYLE_OUTPUT.read_text(encoding="utf-8"))
+    raw_style = STYLE_OUTPUT.read_text(encoding="utf-8")
+    style = compact(raw_style)
+    print_style = compact(css_block(raw_style, "@media print"))
+
+    if not print_style:
+        failures.append("stylesheet missing print-page contract: @media print")
+        return
+
     for needle in (
-        "@media print",
+        "@page",
+        "html, body { background: #ffffff !important; color: #111111 !important; font-size: 11pt; min-height: auto;",
         ".site-header, .site-footer, .back-to-top-button, .code-block-copy-button, .code-block-copy-status, .repo-actions { display: none !important;",
         "main, .hero, .features, .page-header, .page-content { margin: 0; max-width: none; padding: 0; width: 100%;",
-        "background: #ffffff !important;",
         "main a[href]:not([href^=\"#\"])::after { content: \" (\" attr(href) \")\";",
+        "h1, h2, h3 { break-after: avoid;",
+        ".feature-card { background: transparent; border: 1px solid #c8c8c8; break-inside: avoid;",
         "break-inside: avoid;",
         "page-break-inside: avoid;",
-        ".code-block-copy pre, pre { background: #f7f7f7 !important;",
-        "white-space: pre-wrap;",
-        ".print-page-button:focus-visible",
+        ".code-block-copy pre, pre { background: #f7f7f7 !important; border: 1px solid #c8c8c8; color: #111111 !important; overflow: visible; padding: 10pt; white-space: pre-wrap;",
+        ".code-block-copy code, code { color: #111111 !important; font-size: 9.5pt;",
     ):
-        if needle not in style:
+        if needle not in print_style:
             failures.append(f"stylesheet missing print-page contract: {needle}")
+
+    for needle in (".print-page-button:focus-visible",):
+        if needle not in style:
+            failures.append(f"stylesheet missing print-page control contract: {needle}")
 
 
 def main() -> int:
