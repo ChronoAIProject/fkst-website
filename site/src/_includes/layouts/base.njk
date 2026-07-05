@@ -27,36 +27,6 @@
         {% endfor %}
       </nav>
       <div class="header-actions">
-        {% if localeAlternates %}
-          <nav class="language-switch" aria-label="Language" data-locale-switcher>
-            {% for locale in locales.supportedLocales %}
-              {% set alternateHref = localeAlternates[locale.code] %}
-              {% if locale.code == localeCode %}
-                <span
-                  aria-current="page"
-                  data-locale-option="{{ locale.code }}"
-                >{{ locale.label }}</span>
-              {% elif alternateHref %}
-                {% if alternateHref | shouldUseEleventyUrl %}
-                  <a
-                    href="{{ alternateHref | url }}"
-                    hreflang="{{ locale.code }}"
-                    lang="{{ locale.htmlLang }}"
-                    data-locale-option="{{ locale.code }}"
-                  >{{ locale.label }}</a>
-                {% else %}
-                  <a
-                    href="{{ alternateHref }}"
-                    hreflang="{{ locale.code }}"
-                    lang="{{ locale.htmlLang }}"
-                    data-locale-option="{{ locale.code }}"
-                    {{- alternateHref | externalLinkAttributes | safe }}
-                  >{{ locale.label }}{{ alternateHref | externalLinkMarker | safe }}</a>
-                {% endif %}
-              {% endif %}
-            {% endfor %}
-          </nav>
-        {% endif %}
         {% include "components/ThemeToggleButton.njk" %}
         {% include "components/PrintPageButton.njk" %}
       </div>
@@ -84,6 +54,7 @@
 
     {% include "components/BackToTopButton.njk" %}
     {% include "components/KeyboardShortcutHelpOverlay.njk" %}
+    <script src="{{ "/assets/js/locale.js" | url }}" defer data-locale-script></script>
     <script src="{{ "/assets/js/theme.js" | url }}" defer data-theme-script></script>
     <script src="{{ "/assets/js/code-block-copy.js" | url }}" defer data-code-block-copy-script></script>
     <script src="{{ "/assets/js/keyboard-shortcuts.js" | url }}" defer data-keyboard-shortcut-script></script>

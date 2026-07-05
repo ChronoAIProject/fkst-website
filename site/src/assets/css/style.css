@@ -97,22 +97,12 @@ a:focus-visible {
   justify-content: center;
 }
 .top-nav a,
-.top-nav span,
-.language-switch a,
-.language-switch span {
+.top-nav span {
   color: var(--muted);
   font-size: 0.94rem;
   font-weight: 650;
 }
 .top-nav span { color: var(--text); }
-.language-switch {
-  align-items: center;
-  display: flex;
-  gap: 10px;
-  justify-content: end;
-  white-space: nowrap;
-}
-.language-switch span { color: var(--text); }
 .header-actions {
   align-items: center;
   display: flex;
@@ -825,7 +815,6 @@ h2 {
   .site-header,
   .top-nav,
   .header-actions,
-  .language-switch,
   .theme-toggle-control,
   .print-page-control,
   .site-footer,

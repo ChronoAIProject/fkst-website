@@ -36,7 +36,7 @@ def main() -> int:
         "@media print",
         "@page { margin: 16mm; }",
         "body, .article-shell, .page-header, .page-content { background: #ffffff !important; color: #111111 !important; }",
-        ".site-header, .top-nav, .header-actions, .language-switch, .theme-toggle-control, .print-page-control, .site-footer, .article-scroll-progress, .docs-sidebar, .docs-sidebar-toggle, .back-to-top-button, .code-block-copy-button, .code-block-copy-status, .keyboard-shortcut-overlay, .keyboard-shortcut-panel, .keyboard-shortcut-close, .heading-anchor-link, .external-link-marker, .repo-actions { display: none !important; }",
+        ".site-header, .top-nav, .header-actions, .theme-toggle-control, .print-page-control, .site-footer, .article-scroll-progress, .docs-sidebar, .docs-sidebar-toggle, .back-to-top-button, .code-block-copy-button, .code-block-copy-status, .keyboard-shortcut-overlay, .keyboard-shortcut-panel, .keyboard-shortcut-close, .heading-anchor-link, .external-link-marker, .repo-actions { display: none !important; }",
         ".article-shell, .article-shell[data-docs-sidebar-state=\"closed\"] { display: block; gap: 0; grid-template-columns: none; }",
         ".page-header a[href]:not([href^=\"#\"]):not([href=\"\"])::after, .page-content a[href]:not([href^=\"#\"]):not([href=\"\"])::after { content: \" (\" attr(href) \")\";",
         ".page-header a[href^=\"#\"]::after, .page-content a[href^=\"#\"]::after, .heading-anchor-link::after { content: \"\"; }",

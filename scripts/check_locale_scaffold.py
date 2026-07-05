@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check rendered header locale switching behavior."""
+"""Check the internal locale scaffold contract."""
 
 from __future__ import annotations
 
@@ -14,71 +14,33 @@ ROOT = Path(__file__).resolve().parents[1]
 SITE_DIR = ROOT / "site" / "_site"
 MANIFEST = ROOT / "site" / "probe-manifest"
 LOCALES_DATA = ROOT / "site" / "src" / "_data" / "locales.js"
-EXPECTED_CODES = ("en", "zh-CN")
-EXPECTED_SWITCHES = {
-    "/": {"en": "/fkst-website/", "zh-CN": "/fkst-website/zh/"},
-    "/zh/": {"en": "/fkst-website/", "zh-CN": "/fkst-website/zh/"},
-    "/architecture.html": {
-        "en": "/fkst-website/architecture.html",
-        "zh-CN": "/fkst-website/zh/architecture.html",
-    },
-    "/zh/architecture.html": {
-        "en": "/fkst-website/architecture.html",
-        "zh-CN": "/fkst-website/zh/architecture.html",
-    },
-    "/doctrine.html": {
-        "en": "/fkst-website/doctrine.html",
-        "zh-CN": "/fkst-website/zh/doctrine.html",
-    },
-    "/zh/doctrine.html": {
-        "en": "/fkst-website/doctrine.html",
-        "zh-CN": "/fkst-website/zh/doctrine.html",
-    },
-}
+LOCALE_SCRIPT_SOURCE = ROOT / "site" / "src" / "assets" / "js" / "locale.js"
+LOCALE_SCRIPT_OUTPUT = SITE_DIR / "assets" / "js" / "locale.js"
+EXPECTED_CODES = ("en", "zh")
+EXPECTED_DEFAULT_LOCALE = "en"
+EXPECTED_PERSISTENCE_KEY = "fkst-locale"
 
 
 @dataclass
-class LocaleOption:
-    tag: str
-    attrs: dict[str, str]
-    text: str = ""
+class PageLocaleData:
+    html_lang: str = ""
+    locale_scripts: int = 0
+    visible_switchers: int = 0
 
 
 class LocaleScaffoldParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
-        self.html_lang = ""
-        self.switchers: list[dict[str, str]] = []
-        self.switcher_tags: list[str] = []
-        self.options: list[LocaleOption] = []
-        self._in_switcher = 0
-        self._switcher_tags: list[str] = []
-        self._current_option: LocaleOption | None = None
+        self.page = PageLocaleData()
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attr = {name: value or "" for name, value in attrs}
         if tag == "html":
-            self.html_lang = attr.get("lang", "")
+            self.page.html_lang = attr.get("lang", "")
+        if tag == "script" and "data-locale-script" in attr:
+            self.page.locale_scripts += 1
         if "data-locale-switcher" in attr:
-            self.switchers.append(attr)
-            self.switcher_tags.append(tag)
-            self._in_switcher += 1
-            self._switcher_tags.append(tag)
-        if self._in_switcher and "data-locale-option" in attr:
-            option = LocaleOption(tag=tag, attrs=attr)
-            self.options.append(option)
-            self._current_option = option
-
-    def handle_endtag(self, tag: str) -> None:
-        if self._current_option and tag == self._current_option.tag:
-            self._current_option = None
-        if self._switcher_tags and tag == self._switcher_tags[-1]:
-            self._switcher_tags.pop()
-            self._in_switcher -= 1
-
-    def handle_data(self, data: str) -> None:
-        if self._current_option:
-            self._current_option.text += data
+            self.page.visible_switchers += 1
 
 
 def manifest_paths() -> list[str]:
@@ -96,10 +58,19 @@ def output_path(route: str) -> Path:
     return SITE_DIR / route.lstrip("/")
 
 
-def read_supported_locales(failures: list[str]) -> list[dict[str, str]]:
+def read_locale_registry(failures: list[str]) -> dict[str, object]:
     script = (
         "const data = require(process.argv[1]);"
-        "process.stdout.write(JSON.stringify(data.supportedLocales));"
+        "process.stdout.write(JSON.stringify({"
+        "supportedLocales: data.supportedLocales,"
+        "defaultLocale: data.defaultLocale,"
+        "persistenceKey: data.persistenceKey,"
+        "resolveInvalid: data.resolveLocale('invalid'),"
+        "resolveZh: data.resolveLocale('zh'),"
+        "supportsEn: data.isSupportedLocale('en'),"
+        "supportsZh: data.isSupportedLocale('zh'),"
+        "supportsZhCn: data.isSupportedLocale('zh-CN')"
+        "}));"
     )
     result = subprocess.run(
         ["node", "-e", script, str(LOCALES_DATA)],
@@ -111,23 +82,25 @@ def read_supported_locales(failures: list[str]) -> list[dict[str, str]]:
     )
     if result.returncode != 0:
         failures.append(f"could not load locale registry: {result.stderr.strip()}")
-        return []
+        return {}
     try:
         data = json.loads(result.stdout)
     except json.JSONDecodeError as exc:
         failures.append(f"locale registry did not return JSON: {exc}")
-        return []
-    if not isinstance(data, list):
-        failures.append("locale registry must export supportedLocales as a list")
-        return []
+        return {}
+    if not isinstance(data, dict):
+        failures.append("locale registry probe must return an object")
+        return {}
     return data
 
 
-def validate_registry(
-    locales: list[object],
-    failures: list[str],
-) -> dict[str, dict[str, str]]:
+def validate_registry(data: dict[str, object], failures: list[str]) -> dict[str, dict[str, str]]:
     registry: dict[str, dict[str, str]] = {}
+    locales = data.get("supportedLocales")
+    if not isinstance(locales, list):
+        failures.append("locale registry must export supportedLocales as a list")
+        return registry
+
     for entry in locales:
         if not isinstance(entry, dict):
             failures.append(f"locale registry entry is not an object: {entry!r}")
@@ -144,11 +117,7 @@ def validate_registry(
 
     expected = {
         "en": {"htmlLang": "en", "label": "EN", "name": "English"},
-        "zh-CN": {
-            "htmlLang": "zh-Hans",
-            "label": "中文",
-            "name": "Simplified Chinese",
-        },
+        "zh": {"htmlLang": "zh-Hans", "label": "中文", "name": "Chinese"},
     }
     for code, fields in expected.items():
         entry = registry.get(code, {})
@@ -158,22 +127,28 @@ def validate_registry(
                     f"locale {code}: expected {field}={value!r}, found {entry.get(field)!r}"
                 )
 
+    if data.get("defaultLocale") != EXPECTED_DEFAULT_LOCALE:
+        failures.append(
+            f"expected defaultLocale {EXPECTED_DEFAULT_LOCALE!r}, found {data.get('defaultLocale')!r}"
+        )
+    if data.get("persistenceKey") != EXPECTED_PERSISTENCE_KEY:
+        failures.append(
+            f"expected persistenceKey {EXPECTED_PERSISTENCE_KEY!r}, found {data.get('persistenceKey')!r}"
+        )
+    if data.get("resolveInvalid") != EXPECTED_DEFAULT_LOCALE:
+        failures.append("resolveLocale must fall back to the default locale for unsupported values")
+    if data.get("resolveZh") != "zh":
+        failures.append("resolveLocale must preserve supported zh values")
+    if data.get("supportsEn") is not True or data.get("supportsZh") is not True:
+        failures.append("isSupportedLocale must accept en and zh")
+    if data.get("supportsZhCn") is not False:
+        failures.append("isSupportedLocale must reject zh-CN for the scaffold contract")
+
     return registry
 
 
 def check_registry(failures: list[str]) -> dict[str, dict[str, str]]:
-    return validate_registry(read_supported_locales(failures), failures)
-
-
-def parse_route(route: str, failures: list[str]) -> LocaleScaffoldParser | None:
-    path = output_path(route)
-    if not path.is_file():
-        failures.append(f"{route}: missing built file {path}")
-        return None
-
-    parser = LocaleScaffoldParser()
-    parser.feed(path.read_text(encoding="utf-8"))
-    return parser
+    return validate_registry(read_locale_registry(failures), failures)
 
 
 def parse_html(html: str) -> LocaleScaffoldParser:
@@ -182,119 +157,55 @@ def parse_html(html: str) -> LocaleScaffoldParser:
     return parser
 
 
-def validate_route_parser(
-    route: str,
-    registry: dict[str, dict[str, str]],
-    parser: LocaleScaffoldParser,
-    failures: list[str],
-    expected_switches_by_route: dict[str, dict[str, str]] = EXPECTED_SWITCHES,
-) -> None:
-    expected_switches = expected_switches_by_route.get(route)
-    if not expected_switches:
-        failures.append(f"{route}: missing expected locale switch contract")
-        return
+def parse_route(route: str, failures: list[str]) -> LocaleScaffoldParser | None:
+    path = output_path(route)
+    if not path.is_file():
+        failures.append(f"{route}: missing built file {path}")
+        return None
 
-    if len(parser.switchers) != 1:
-        failures.append(f"{route}: expected 1 language switcher, found {len(parser.switchers)}")
-        return
+    return parse_html(path.read_text(encoding="utf-8"))
 
-    label = parser.switchers[0].get("aria-label")
-    if label != "Language":
-        failures.append(f"{route}: expected language switcher aria-label 'Language', found {label!r}")
-    if parser.switcher_tags != ["nav"]:
-        failures.append(f"{route}: language switcher must render as a nav landmark, found {parser.switcher_tags!r}")
 
-    options = {option.attrs.get("data-locale-option", ""): option for option in parser.options}
-    codes = tuple(options)
-    if codes != EXPECTED_CODES:
-        failures.append(f"{route}: expected locale options {EXPECTED_CODES!r}, found {codes!r}")
-        return
-
-    current = [option for option in parser.options if option.attrs.get("aria-current") == "page"]
-    if len(current) != 1:
-        failures.append(f"{route}: expected 1 current locale option, found {len(current)}")
-        return
-
-    current_code = current[0].attrs.get("data-locale-option", "")
-    expected_current = "zh-CN" if route.startswith("/zh/") else "en"
-    if current_code != expected_current:
-        failures.append(f"{route}: expected current locale {expected_current}, found {current_code!r}")
-    if parser.html_lang != registry.get(current_code, {}).get("htmlLang"):
+def validate_route_parser(route: str, parser: LocaleScaffoldParser, failures: list[str]) -> None:
+    expected_lang = "zh-Hans" if route.startswith("/zh/") else "en"
+    if parser.page.html_lang != expected_lang:
         failures.append(
-            f"{route}: html lang {parser.html_lang!r} does not match current locale {current_code!r}"
+            f"{route}: expected html lang {expected_lang!r}, found {parser.page.html_lang!r}"
+        )
+    if parser.page.locale_scripts != 1:
+        failures.append(f"{route}: expected 1 locale scaffold script, found {parser.page.locale_scripts}")
+    if parser.page.visible_switchers != 0:
+        failures.append(
+            f"{route}: expected no visible scaffold-first locale switcher, found {parser.page.visible_switchers}"
         )
 
-    for code, entry in registry.items():
-        option = options.get(code)
-        if not option:
-            continue
-        if option.text.strip() != entry.get("label"):
-            failures.append(
-                f"{route}: expected {code} label {entry.get('label')!r}, found {option.text.strip()!r}"
-            )
-        if code != current_code:
-            if option.tag != "a":
-                failures.append(f"{route}: non-current locale {code} must render as a link")
-            expected_href = expected_switches.get(code)
-            if option.attrs.get("href") != expected_href:
-                failures.append(
-                    f"{route}: expected {code} href {expected_href!r}, found {option.attrs.get('href')!r}"
-                )
-            if option.attrs.get("hreflang") != code:
-                failures.append(
-                    f"{route}: expected {code} hreflang {code!r}, found {option.attrs.get('hreflang')!r}"
-                )
-            if option.attrs.get("lang") != entry.get("htmlLang"):
-                failures.append(
-                    f"{route}: expected {code} lang {entry.get('htmlLang')!r}, found {option.attrs.get('lang')!r}"
-                )
-        elif option.tag != "span":
-            failures.append(f"{route}: current locale {code} must render as non-link text")
-        elif "href" in option.attrs:
-            failures.append(f"{route}: current locale {code} must not have href")
 
-
-def check_route(
-    route: str,
-    registry: dict[str, dict[str, str]],
-    failures: list[str],
-) -> None:
+def check_route(route: str, failures: list[str]) -> None:
     parser = parse_route(route, failures)
-    if not parser:
+    if parser:
+        validate_route_parser(route, parser, failures)
+
+
+def check_script_copy(failures: list[str]) -> None:
+    if not LOCALE_SCRIPT_SOURCE.is_file():
+        failures.append(f"missing locale scaffold script {LOCALE_SCRIPT_SOURCE}")
         return
-
-    validate_route_parser(route, registry, parser, failures)
-
-
-def validate_manifest_contract(
-    routes: list[str],
-    failures: list[str],
-    expected_switches_by_route: dict[str, dict[str, str]] = EXPECTED_SWITCHES,
-) -> None:
-    expected_routes = set(expected_switches_by_route)
-    found_routes = set(routes)
-    if len(routes) != len(found_routes):
-        failures.append(f"locale manifest contains duplicate routes: {routes!r}")
-
-    missing_routes = sorted(expected_routes - found_routes)
-    extra_routes = sorted(found_routes - expected_routes)
-    if missing_routes:
-        failures.append(f"locale manifest missing expected routes {missing_routes!r}")
-    if extra_routes:
-        failures.append(f"locale manifest contains unchecked routes {extra_routes!r}")
-
-
-def check_manifest_contract(routes: list[str], failures: list[str]) -> None:
-    validate_manifest_contract(routes, failures)
+    if not LOCALE_SCRIPT_OUTPUT.is_file():
+        failures.append(f"missing built locale scaffold script {LOCALE_SCRIPT_OUTPUT}")
+        return
+    if LOCALE_SCRIPT_SOURCE.read_text(encoding="utf-8") != LOCALE_SCRIPT_OUTPUT.read_text(
+        encoding="utf-8"
+    ):
+        failures.append("built locale scaffold script differs from source asset")
 
 
 def main() -> int:
     failures: list[str] = []
-    registry = check_registry(failures)
+    check_registry(failures)
+    check_script_copy(failures)
     routes = manifest_paths()
-    check_manifest_contract(routes, failures)
     for route in routes:
-        check_route(route, registry, failures)
+        check_route(route, failures)
 
     if failures:
         for failure in failures:
