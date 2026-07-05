@@ -16,6 +16,7 @@ const STYLE_OUTPUT_PATH = path.join(SITE_OUTPUT, "assets", "css", "style.css");
 const SCRIPT_SOURCE = fs.readFileSync(SCRIPT_PATH, "utf8");
 const siteRequire = createRequire(path.join(SITE_ROOT, "package.json"));
 const { JSDOM } = siteRequire("jsdom");
+const STORAGE_KEY = "fkst-theme";
 
 function manifestRoutes() {
   return fs.readFileSync(MANIFEST, "utf8")
@@ -89,10 +90,129 @@ function testStylesheetExposesExplicitThemeHooks() {
   }
 }
 
+function createBootHarness(html, options = {}) {
+  const errors = [];
+  const dom = new JSDOM(html, {
+    beforeParse(window) {
+      window.addEventListener("error", (event) => {
+        errors.push(event.error || event.message);
+      });
+      window.addEventListener("unhandledrejection", (event) => {
+        errors.push(event.reason);
+      });
+
+      if (options.localStorageThrows) {
+        Object.defineProperty(window, "localStorage", {
+          configurable: true,
+          get() {
+            throw new Error("localStorage unavailable");
+          }
+        });
+        return;
+      }
+
+      if (options.getItemThrows) {
+        Object.defineProperty(window.Storage.prototype, "getItem", {
+          configurable: true,
+          value() {
+            throw new Error("getItem unavailable");
+          }
+        });
+        return;
+      }
+
+      if (options.localStorageValue !== undefined) {
+        window.localStorage.setItem(STORAGE_KEY, options.localStorageValue);
+      }
+    },
+    runScripts: "dangerously",
+    url: "https://fkst.local/"
+  });
+
+  return {
+    document: dom.window.document,
+    errors,
+    window: dom.window
+  };
+}
+
+function assertBootState(route, label, harness, expected) {
+  const { document, errors, window } = harness;
+  assert.deepEqual(errors, [], `${route}: boot script errored for ${label}`);
+  assert.equal(
+    document.documentElement.hasAttribute("data-theme"),
+    expected.hasDataTheme,
+    `${route}: root data-theme presence mismatch for ${label}`
+  );
+  assert.equal(
+    document.documentElement.getAttribute("data-theme"),
+    expected.dataTheme,
+    `${route}: root data-theme value mismatch for ${label}`
+  );
+  assert.equal(
+    document.documentElement.style.colorScheme,
+    expected.colorScheme,
+    `${route}: root colorScheme mismatch for ${label}`
+  );
+  assert.equal(
+    window.fkstTheme,
+    undefined,
+    `${route}: deferred theme script should not run during boot check for ${label}`
+  );
+}
+
+function testBootScriptRestoresStoredThemeBeforeDeferredScript() {
+  const bootScenarios = [
+    {
+      label: "stored light",
+      options: { localStorageValue: "light" },
+      expected: { hasDataTheme: true, dataTheme: "light", colorScheme: "light" }
+    },
+    {
+      label: "stored dark",
+      options: { localStorageValue: "dark" },
+      expected: { hasDataTheme: true, dataTheme: "dark", colorScheme: "dark" }
+    },
+    {
+      label: "missing preference",
+      options: {},
+      expected: { hasDataTheme: false, dataTheme: null, colorScheme: "" }
+    },
+    {
+      label: "invalid stored preference",
+      options: { localStorageValue: "solarized" },
+      expected: { hasDataTheme: false, dataTheme: null, colorScheme: "" }
+    },
+    {
+      label: "unavailable storage",
+      options: { localStorageThrows: true },
+      expected: { hasDataTheme: false, dataTheme: null, colorScheme: "" }
+    },
+    {
+      label: "storage read failure",
+      options: { getItemThrows: true },
+      expected: { hasDataTheme: false, dataTheme: null, colorScheme: "" }
+    }
+  ];
+
+  for (const route of manifestRoutes()) {
+    const html = fs.readFileSync(outputPath(route), "utf8");
+    for (const scenario of bootScenarios) {
+      assertBootState(
+        route,
+        scenario.label,
+        createBootHarness(html, scenario.options),
+        scenario.expected
+      );
+    }
+  }
+}
+
 function main() {
   const tests = [
     testBuiltPagesIncludeOneEnabledToggleAndScript,
-    testStylesheetExposesExplicitThemeHooks
+    testStylesheetExposesExplicitThemeHooks,
+    testBootScriptRestoresStoredThemeBeforeDeferredScript
   ];
 
   for (const test of tests) {
