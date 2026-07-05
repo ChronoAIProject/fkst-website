@@ -2,6 +2,10 @@
   class="article-shell"
   data-article-shell
   data-docs-sidebar-shell
+  {% if post %}
+    data-post-contract="{{ post.contract }}"
+    data-post-source-format="{{ post.sourceFormat }}"
+  {% endif %}
   {% if hasDocsTocEntries %}
     data-docs-sidebar-open
   {% else %}
