@@ -1,7 +1,8 @@
 "use strict";
 
-const MIN_HEADING_LEVEL = 1;
-const MAX_HEADING_LEVEL = 6;
+const DEFAULT_DOCS_TOC_LEVEL = 2;
+const MIN_DOCS_TOC_LEVEL = 2;
+const MAX_DOCS_TOC_LEVEL = 3;
 
 const entriesByPage = new Map();
 
@@ -13,13 +14,25 @@ function pageKey(page) {
   return String(page.inputPath || page.filePathStem || page.url || "");
 }
 
-function normalizeHeadingLevel(value) {
+function normalizeHeadingLevel(value, fallback = DEFAULT_DOCS_TOC_LEVEL) {
+  if (value === undefined || value === null || value === "") {
+    return fallback;
+  }
+
   const parsed = Number.parseInt(String(value ?? ""), 10);
-  if (!Number.isInteger(parsed) || parsed < MIN_HEADING_LEVEL || parsed > MAX_HEADING_LEVEL) {
-    return 2;
+  if (!Number.isInteger(parsed)) {
+    return fallback;
+  }
+  if (parsed < MIN_DOCS_TOC_LEVEL || parsed > MAX_DOCS_TOC_LEVEL) {
+    return null;
   }
 
   return parsed;
+}
+
+function normalizeHeadingDepth(value, level) {
+  const normalized = normalizeHeadingLevel(value, level);
+  return normalized || level;
 }
 
 function normalizeDocsTocEntry(entry = {}) {
@@ -30,7 +43,10 @@ function normalizeDocsTocEntry(entry = {}) {
   }
 
   const level = normalizeHeadingLevel(entry.level);
-  const depth = normalizeHeadingLevel(entry.depth ?? level);
+  if (!level) {
+    return null;
+  }
+  const depth = normalizeHeadingDepth(entry.depth, level);
 
   return {
     id,

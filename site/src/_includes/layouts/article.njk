@@ -1,6 +1,6 @@
 {% extends "layouts/base.njk" %}
 {% set docsTocEntries = page | docsTocEntries %}
-{% set hasDocsTocEntries = (docsTocEntries | length) > 0 %}
+{% set hasDocsTocEntries = (docsTocEntries | length) > 1 %}
 
 {% block content %}
 {% include "components/ArticleScrollProgress.njk" %}

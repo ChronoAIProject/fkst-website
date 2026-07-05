@@ -38,6 +38,11 @@ footerLabel: 返回首页
       持久 graph，department 声明具体职责，person 是被 spawn 出来
       执行有边界任务的 worker。
     </p>
+    <h3 id="department-responsibilities" class="heading-anchor-target">Department 职责{% headingAnchor "department-responsibilities", "Department 职责", "Link to department responsibilities section", 3 %}</h3>
+    <p>
+      Department 是一等接线点。它们把扩展行为显式放进 graph，
+      而不是把工作隐藏在运行时拦截后面。
+    </p>
     <ul>
       <li>source 从 GitHub issue、timer 等外部事实 raise event。</li>
       <li>fanout 让多个 department 消费同一个事实，而不是做运行时拦截。</li>
@@ -69,6 +74,7 @@ footerLabel: 返回首页
       contract，fkst-packages 负责可复用 package 模式，fkst-website
       只添加 website 域 Lua 行为。
     </p>
+    <h3 id="package-root-union" class="heading-anchor-target">Package root union{% headingAnchor "package-root-union", "Package root union", "Link to package root union section", 3 %}</h3>
     <p>
       package 可以是 flat 或 composed。composed package 通过声明组合
       引用依赖；engine 在运行时接收多个已 pin 的 package root，并
