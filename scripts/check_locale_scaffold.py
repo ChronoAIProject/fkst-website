@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Check the internal locale scaffold contract."""
+"""Check the locale registry, script, and rendered switcher contract."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from pathlib import Path
 import json
@@ -22,16 +22,42 @@ EXPECTED_PERSISTENCE_KEY = "fkst-locale"
 
 
 @dataclass
+class LocaleOptionData:
+    code: str
+    href: str
+    hreflang: str
+    lang: str
+    aria_current: str
+    aria_label: str
+    classes: list[str]
+    label_parts: list[str] = field(default_factory=list)
+
+    @property
+    def label(self) -> str:
+        return "".join(self.label_parts).strip()
+
+
+@dataclass
+class LocaleSwitcherData:
+    aria_label: str
+    current: str
+    classes: list[str]
+    options: list[LocaleOptionData] = field(default_factory=list)
+
+
+@dataclass
 class PageLocaleData:
     html_lang: str = ""
     locale_scripts: int = 0
-    visible_switchers: int = 0
+    switchers: list[LocaleSwitcherData] = field(default_factory=list)
 
 
 class LocaleScaffoldParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
         self.page = PageLocaleData()
+        self._switcher_stack: list[LocaleSwitcherData] = []
+        self._option_stack: list[LocaleOptionData] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attr = {name: value or "" for name, value in attrs}
@@ -39,8 +65,37 @@ class LocaleScaffoldParser(HTMLParser):
             self.page.html_lang = attr.get("lang", "")
         if tag == "script" and "data-locale-script" in attr:
             self.page.locale_scripts += 1
-        if "data-locale-switcher" in attr:
-            self.page.visible_switchers += 1
+        if tag == "nav" and "data-locale-switcher" in attr:
+            switcher = LocaleSwitcherData(
+                aria_label=attr.get("aria-label", ""),
+                current=attr.get("data-locale-current", ""),
+                classes=(attr.get("class") or "").split(),
+            )
+            self.page.switchers.append(switcher)
+            self._switcher_stack.append(switcher)
+            return
+        if tag == "a" and self._switcher_stack and "data-locale-option" in attr:
+            option = LocaleOptionData(
+                code=attr.get("data-locale-code", ""),
+                href=attr.get("href", ""),
+                hreflang=attr.get("hreflang", ""),
+                lang=attr.get("lang", ""),
+                aria_current=attr.get("aria-current", ""),
+                aria_label=attr.get("aria-label", ""),
+                classes=(attr.get("class") or "").split(),
+            )
+            self._switcher_stack[-1].options.append(option)
+            self._option_stack.append(option)
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "a" and self._option_stack:
+            self._option_stack.pop()
+        if tag == "nav" and self._switcher_stack:
+            self._switcher_stack.pop()
+
+    def handle_data(self, data: str) -> None:
+        if self._option_stack:
+            self._option_stack[-1].label_parts.append(data)
 
 
 def manifest_paths() -> list[str]:
@@ -168,16 +223,98 @@ def parse_route(route: str, failures: list[str]) -> LocaleScaffoldParser | None:
 
 def validate_route_parser(route: str, parser: LocaleScaffoldParser, failures: list[str]) -> None:
     expected_lang = "zh-Hans" if route.startswith("/zh/") else "en"
+    expected_current = "zh" if route.startswith("/zh/") else "en"
+    expected_hrefs = {
+        "/": {"en": "/fkst-website/", "zh": "/fkst-website/zh/"},
+        "/zh/": {"en": "/fkst-website/", "zh": "/fkst-website/zh/"},
+        "/architecture.html": {
+            "en": "/fkst-website/architecture.html",
+            "zh": "/fkst-website/zh/architecture.html",
+        },
+        "/zh/architecture.html": {
+            "en": "/fkst-website/architecture.html",
+            "zh": "/fkst-website/zh/architecture.html",
+        },
+        "/doctrine.html": {
+            "en": "/fkst-website/doctrine.html",
+            "zh": "/fkst-website/zh/doctrine.html",
+        },
+        "/zh/doctrine.html": {
+            "en": "/fkst-website/doctrine.html",
+            "zh": "/fkst-website/zh/doctrine.html",
+        },
+    }
+    expected_labels = {"en": "EN", "zh": "中文"}
+    expected_names = {"en": "English", "zh": "Chinese"}
+    expected_langs = {"en": "en", "zh": "zh-Hans"}
+
     if parser.page.html_lang != expected_lang:
         failures.append(
             f"{route}: expected html lang {expected_lang!r}, found {parser.page.html_lang!r}"
         )
     if parser.page.locale_scripts != 1:
         failures.append(f"{route}: expected 1 locale scaffold script, found {parser.page.locale_scripts}")
-    if parser.page.visible_switchers != 0:
+    if len(parser.page.switchers) != 1:
+        failures.append(f"{route}: expected 1 locale switcher, found {len(parser.page.switchers)}")
+        return
+
+    switcher = parser.page.switchers[0]
+    if "locale-switcher" not in switcher.classes:
+        failures.append(f"{route}: locale switcher missing locale-switcher class")
+    if switcher.aria_label != "Language":
+        failures.append(f"{route}: expected switcher aria-label 'Language', found {switcher.aria_label!r}")
+    if switcher.current != expected_current:
         failures.append(
-            f"{route}: expected no visible scaffold-first locale switcher, found {parser.page.visible_switchers}"
+            f"{route}: expected data-locale-current {expected_current!r}, found {switcher.current!r}"
         )
+    if len(switcher.options) != 2:
+        failures.append(f"{route}: expected 2 locale options, found {len(switcher.options)}")
+        return
+
+    seen_codes = [option.code for option in switcher.options]
+    if seen_codes != ["en", "zh"]:
+        failures.append(f"{route}: expected locale option order ['en', 'zh'], found {seen_codes!r}")
+
+    current_count = 0
+    for option in switcher.options:
+        if "locale-switcher-option" not in option.classes:
+            failures.append(f"{route}: {option.code}: missing locale-switcher-option class")
+        if option.label != expected_labels.get(option.code):
+            failures.append(
+                f"{route}: {option.code}: expected label {expected_labels.get(option.code)!r}, found {option.label!r}"
+            )
+        if option.href != expected_hrefs.get(route, {}).get(option.code):
+            failures.append(
+                f"{route}: {option.code}: expected href {expected_hrefs.get(route, {}).get(option.code)!r}, found {option.href!r}"
+            )
+        if option.hreflang != expected_langs.get(option.code):
+            failures.append(
+                f"{route}: {option.code}: expected hreflang {expected_langs.get(option.code)!r}, found {option.hreflang!r}"
+            )
+        if option.lang != expected_langs.get(option.code):
+            failures.append(
+                f"{route}: {option.code}: expected lang {expected_langs.get(option.code)!r}, found {option.lang!r}"
+            )
+        if option.code == expected_current:
+            current_count += 1
+            if option.aria_current != "page":
+                failures.append(f"{route}: {option.code}: current locale missing aria-current='page'")
+            if "is-current" not in option.classes:
+                failures.append(f"{route}: {option.code}: current locale missing is-current class")
+            if option.aria_label != f"{expected_names.get(option.code)}, current language":
+                failures.append(
+                    f"{route}: {option.code}: current locale aria-label must include current state, found {option.aria_label!r}"
+                )
+        else:
+            if option.aria_current:
+                failures.append(
+                    f"{route}: {option.code}: non-current locale must not have aria-current, found {option.aria_current!r}"
+                )
+            if "is-current" in option.classes:
+                failures.append(f"{route}: {option.code}: non-current locale must not have is-current class")
+
+    if current_count != 1:
+        failures.append(f"{route}: expected exactly one current locale option, found {current_count}")
 
 
 def check_route(route: str, failures: list[str]) -> None:
