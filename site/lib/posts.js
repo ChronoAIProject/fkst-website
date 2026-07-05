@@ -1,7 +1,6 @@
 "use strict";
 
 const POST_CONTRACT_VERSION = "post.v1";
-const POST_SOURCE_FRONTMATTER = "frontmatter-yaml";
 const POST_SOURCE_TYPED = "typed-schema";
 
 const POST_SCHEMA = Object.freeze({
@@ -39,10 +38,6 @@ class PostSchemaError extends Error {
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
-function hasOwn(value, field) {
-  return Object.prototype.hasOwnProperty.call(value, field);
 }
 
 function trimString(value) {
@@ -229,10 +224,7 @@ function normalizePost(input, sourceFormat) {
     readOptionalString(input, "summary", errors) ||
     articleIntro ||
     undefined;
-  const publishedDate = normalizePublishedDate(
-    input.publishedDate === undefined ? input.date : input.publishedDate,
-    errors
-  );
+  const publishedDate = normalizePublishedDate(input.publishedDate, errors);
 
   const post = {
     contract: POST_CONTRACT_VERSION,
@@ -288,80 +280,14 @@ function normalizePost(input, sourceFormat) {
   return Object.freeze(post);
 }
 
-function frontmatterPostInput(frontmatter) {
-  if (!isPlainObject(frontmatter)) {
-    return frontmatter;
-  }
-
-  const input = {
-    articleEyebrow: frontmatter.articleEyebrow,
-    articleIntro: frontmatter.articleIntro,
-    articleTitle: frontmatter.articleTitle,
-    brandHref: frontmatter.brandHref,
-    description: frontmatter.description,
-    footerHref: frontmatter.footerHref,
-    footerLabel: frontmatter.footerLabel,
-    footerText: frontmatter.footerText,
-    lang: frontmatter.lang,
-    layout: frontmatter.layout,
-    localeAlternates: frontmatter.localeAlternates,
-    localeCode: frontmatter.localeCode,
-    nav: frontmatter.nav,
-    permalink: frontmatter.permalink,
-    summary: frontmatter.summary,
-    title: frontmatter.title,
-  };
-
-  const category = frontmatter.category === undefined
-    ? frontmatter.postCategory
-    : frontmatter.category;
-  if (category !== undefined) {
-    input.category = category;
-  }
-
-  const publishedDate = frontmatter.publishedDate === undefined
-    ? frontmatter.postDate
-    : frontmatter.publishedDate;
-  if (publishedDate !== undefined) {
-    input.publishedDate = publishedDate;
-  } else if (typeof frontmatter.date === "string") {
-    input.publishedDate = frontmatter.date;
-  }
-
-  return input;
-}
-
 function parseTypedPost(input) {
   return normalizePost(input, POST_SOURCE_TYPED);
-}
-
-function parseFrontmatterPost(frontmatter) {
-  return normalizePost(frontmatterPostInput(frontmatter), POST_SOURCE_FRONTMATTER);
-}
-
-function isFrontmatterPost(data) {
-  if (!isPlainObject(data)) {
-    return false;
-  }
-
-  return trimString(data.permalink).startsWith("/blog/");
-}
-
-function postFromEleventyData(data) {
-  if (!isFrontmatterPost(data)) {
-    return null;
-  }
-
-  return parseFrontmatterPost(data);
 }
 
 module.exports = {
   POST_CONTRACT_VERSION,
   POST_SCHEMA,
-  POST_SOURCE_FRONTMATTER,
   POST_SOURCE_TYPED,
   PostSchemaError,
-  parseFrontmatterPost,
   parseTypedPost,
-  postFromEleventyData,
 };

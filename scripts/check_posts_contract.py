@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Smoke-check typed blog indexes and legacy frontmatter posts against the post contract."""
+"""Smoke-check typed blog indexes and typed article posts against the post contract."""
 
 from __future__ import annotations
 
@@ -11,7 +11,8 @@ import textwrap
 
 ROOT = Path(__file__).resolve().parents[1]
 SITE_DIR = ROOT / "site"
-SOURCE_FIXTURE = SITE_DIR / "src" / "__post_contract_smoke.md"
+SOURCE_FIXTURE = SITE_DIR / "src" / "__post_contract_smoke.njk"
+DATA_FIXTURE = SITE_DIR / "src" / "__post_contract_smoke.11tydata.js"
 OUTPUT_FIXTURE = SITE_DIR / "_site" / "blog" / "__post_contract_smoke" / "index.html"
 BLOG_INDEX_OUTPUTS = (
     (
@@ -213,21 +214,41 @@ def build_fixture() -> subprocess.CompletedProcess[str]:
             ---
             layout: layouts/article.njk
             permalink: /blog/__post_contract_smoke/
-            lang: en
-            localeCode: en
-            title: Post Contract Smoke | fkst
-            description: "Smoke fixture for the legacy frontmatter post contract."
-            articleEyebrow: Blog smoke
-            articleTitle: Legacy YAML post renders through the typed contract
-            articleIntro: "Legacy frontmatter still feeds the article header."
-            postCategory: news
-            postDate: "2026-07-05"
             brandHref: /
             nav: []
             footerText: Smoke fixture
             ---
 
-            <p data-post-contract-smoke>Legacy post body rendered.</p>
+            <p data-post-contract-smoke>Typed post body rendered.</p>
+            """
+        ),
+        encoding="utf-8",
+    )
+    DATA_FIXTURE.write_text(
+        textwrap.dedent(
+            """\
+            "use strict";
+
+            const { parseTypedPost } = require("../lib/posts");
+
+            module.exports = {
+              lang: "en",
+              localeCode: "en",
+              title: "Post Contract Smoke | fkst",
+              description: "Smoke fixture for the typed post contract.",
+              post: parseTypedPost({
+                articleEyebrow: "Blog smoke",
+                articleIntro: "Typed post data feeds the article header.",
+                articleTitle: "Typed schema post renders through the article layout",
+                category: { slug: "news" },
+                description: "Smoke fixture for the typed post contract.",
+                lang: "en",
+                localeCode: "en",
+                permalink: "/blog/__post_contract_smoke/",
+                publishedDate: "2026-07-05",
+                title: "Post Contract Smoke | fkst",
+              }),
+            };
             """
         ),
         encoding="utf-8",
@@ -243,6 +264,7 @@ def build_fixture() -> subprocess.CompletedProcess[str]:
         )
     finally:
         SOURCE_FIXTURE.unlink(missing_ok=True)
+        DATA_FIXTURE.unlink(missing_ok=True)
 
 
 def main() -> int:
@@ -259,19 +281,19 @@ def main() -> int:
         parser = PostContractParser()
         parser.feed(OUTPUT_FIXTURE.read_text(encoding="utf-8"))
         if parser.article_shell_count != 1 or parser.article_content_count != 1:
-            failures.append("legacy frontmatter post did not render through the article layout")
+            failures.append("typed post did not render through the article layout")
         if parser.post_contract != "post.v1":
             failures.append(f"expected post.v1 contract marker, found {parser.post_contract!r}")
-        if parser.post_source_format != "frontmatter-yaml":
+        if parser.post_source_format != "typed-schema":
             failures.append(
-                f"expected frontmatter-yaml source marker, found {parser.post_source_format!r}"
+                f"expected typed-schema source marker, found {parser.post_source_format!r}"
             )
-        if "".join(parser.heading_text).strip() != "Legacy YAML post renders through the typed contract":
-            failures.append("legacy frontmatter articleTitle did not render in the article header")
-        if "".join(parser.intro_text).strip() != "Legacy frontmatter still feeds the article header.":
-            failures.append("legacy frontmatter articleIntro did not render in the article header")
-        if "".join(parser.body_text).strip() != "Legacy post body rendered.":
-            failures.append("legacy frontmatter post body did not render")
+        if "".join(parser.heading_text).strip() != "Typed schema post renders through the article layout":
+            failures.append("typed post articleTitle did not render in the article header")
+        if "".join(parser.intro_text).strip() != "Typed post data feeds the article header.":
+            failures.append("typed post articleIntro did not render in the article header")
+        if "".join(parser.body_text).strip() != "Typed post body rendered.":
+            failures.append("typed post body did not render")
 
     for label, path, expected_posts in BLOG_INDEX_OUTPUTS:
         if not path.is_file():

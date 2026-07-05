@@ -4,15 +4,13 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 
+const postsContract = require("../lib/posts");
 const {
   POST_CONTRACT_VERSION,
-  POST_SOURCE_FRONTMATTER,
   POST_SOURCE_TYPED,
   PostSchemaError,
-  parseFrontmatterPost,
   parseTypedPost,
-  postFromEleventyData,
-} = require("../lib/posts");
+} = postsContract;
 const blogPosts = require("../src/_data/blogPosts");
 
 function assertErrorSet(actual, expected) {
@@ -64,6 +62,16 @@ test("parseTypedPost accepts valid post data and exposes the internal contract",
   ]);
 });
 
+test("posts module exposes only the typed post contract API", () => {
+  assert.deepEqual(Object.keys(postsContract).sort(), [
+    "POST_CONTRACT_VERSION",
+    "POST_SCHEMA",
+    "POST_SOURCE_TYPED",
+    "PostSchemaError",
+    "parseTypedPost",
+  ]);
+});
+
 test("parseTypedPost rejects invalid required fields with narrow errors", () => {
   assert.throws(
     () =>
@@ -110,32 +118,6 @@ test("parseTypedPost rejects invalid optional typed fields when they are present
   );
 });
 
-test("parseFrontmatterPost adapts legacy frontmatter YAML-shaped data", () => {
-  const post = parseFrontmatterPost({
-    articleEyebrow: "Blog smoke",
-    articleIntro: "Fixture article for the legacy frontmatter path.",
-    articleTitle: "Legacy frontmatter post",
-    brandHref: "/",
-    description: "Legacy frontmatter fixture.",
-    footerText: "Smoke fixture",
-    lang: "en",
-    layout: "layouts/article.njk",
-    localeCode: "en",
-    nav: [],
-    permalink: "/blog/legacy-frontmatter/",
-    postCategory: "news",
-    postDate: "2026-07-05",
-    title: "Legacy Frontmatter | fkst",
-  });
-
-  assert.equal(post.contract, POST_CONTRACT_VERSION);
-  assert.equal(post.sourceFormat, POST_SOURCE_FRONTMATTER);
-  assert.equal(post.articleTitle, "Legacy frontmatter post");
-  assert.equal(post.publishedDate, "2026-07-05");
-  assert.deepEqual(post.category, { slug: "news" });
-  assert.deepEqual(post.nav, []);
-});
-
 test("repo-local blog index posts are normalized through the typed post contract", () => {
   assert.equal(blogPosts.en.length, 3);
   assert.equal(blogPosts.zh.length, 3);
@@ -163,33 +145,4 @@ test("repo-local blog index posts are normalized through the typed post contract
     blogPosts.en.map((item) => item.post.sourceFormat),
     ["typed-schema", "typed-schema", "typed-schema"]
   );
-});
-
-test("postFromEleventyData leaves non-blog pages outside the post contract", () => {
-  assert.equal(
-    postFromEleventyData({
-      layout: "layouts/article.njk",
-      permalink: "/architecture.html",
-      title: "Architecture | fkst",
-    }),
-    null
-  );
-});
-
-test("postFromEleventyData normalizes frontmatter-backed blog posts", () => {
-  const post = postFromEleventyData({
-    articleIntro: "Fixture article for Eleventy data normalization.",
-    brandHref: "/",
-    description: "Eleventy data fixture.",
-    lang: "en",
-    layout: "layouts/article.njk",
-    localeCode: "en",
-    nav: [],
-    permalink: "/blog/eleventy-frontmatter/",
-    title: "Eleventy Frontmatter | fkst",
-  });
-
-  assert.equal(post.sourceFormat, POST_SOURCE_FRONTMATTER);
-  assert.equal(post.articleTitle, "Eleventy Frontmatter | fkst");
-  assert.equal(post.summary, "Fixture article for Eleventy data normalization.");
 });

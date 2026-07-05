@@ -15,8 +15,10 @@ ROOT = Path(__file__).resolve().parents[1]
 SITE_DIR = ROOT / "site"
 
 RICH_SOURCE_FIXTURE = SITE_DIR / "src" / "__blog_post_rendering_characterization.md"
+RICH_DATA_FIXTURE = SITE_DIR / "src" / "__blog_post_rendering_characterization.11tydata.js"
 RICH_OUTPUT_FIXTURE = SITE_DIR / "_site" / "blog" / "__rendering_characterization" / "index.html"
 MINIMAL_SOURCE_FIXTURE = SITE_DIR / "src" / "__blog_post_rendering_minimal.md"
+MINIMAL_DATA_FIXTURE = SITE_DIR / "src" / "__blog_post_rendering_minimal.11tydata.js"
 MINIMAL_OUTPUT_FIXTURE = SITE_DIR / "_site" / "blog" / "__rendering_minimal" / "index.html"
 
 RICH_TITLE = "Browser tab title for pinned blog post | fkst"
@@ -289,15 +291,6 @@ def write_fixtures() -> None:
             ---
             layout: layouts/article.njk
             permalink: /blog/__rendering_characterization/
-            lang: en
-            localeCode: en
-            title: {RICH_TITLE}
-            description: "{RICH_DESCRIPTION}"
-            articleEyebrow: Blog
-            articleTitle: {RICH_ARTICLE_TITLE}
-            articleIntro: "{RICH_INTRO}"
-            date: 2026-07-04
-            category: news
             image: /assets/img/homepage-hero-illustration.svg
             brandHref: /
             nav:
@@ -334,10 +327,6 @@ def write_fixtures() -> None:
             ---
             layout: layouts/article.njk
             permalink: /blog/__rendering_minimal/
-            lang: en
-            localeCode: en
-            title: {MINIMAL_TITLE}
-            description: "{MINIMAL_DESCRIPTION}"
             brandHref: /
             nav: []
             footerText: Minimal blog post rendering fixture.
@@ -346,6 +335,59 @@ def write_fixtures() -> None:
             ---
 
             Minimal body copy only.
+            """
+        ),
+        encoding="utf-8",
+    )
+    RICH_DATA_FIXTURE.write_text(
+        textwrap.dedent(
+            f"""\
+            "use strict";
+
+            const {{ parseTypedPost }} = require("../lib/posts");
+
+            module.exports = {{
+              lang: "en",
+              localeCode: "en",
+              title: "{RICH_TITLE}",
+              description: "{RICH_DESCRIPTION}",
+              post: parseTypedPost({{
+                articleEyebrow: "Blog",
+                articleIntro: "{RICH_INTRO}",
+                articleTitle: "{RICH_ARTICLE_TITLE}",
+                category: {{ slug: "news" }},
+                description: "{RICH_DESCRIPTION}",
+                lang: "en",
+                localeCode: "en",
+                permalink: "/blog/__rendering_characterization/",
+                publishedDate: "2026-07-04",
+                title: "{RICH_TITLE}",
+              }}),
+            }};
+            """
+        ),
+        encoding="utf-8",
+    )
+    MINIMAL_DATA_FIXTURE.write_text(
+        textwrap.dedent(
+            f"""\
+            "use strict";
+
+            const {{ parseTypedPost }} = require("../lib/posts");
+
+            module.exports = {{
+              lang: "en",
+              localeCode: "en",
+              title: "{MINIMAL_TITLE}",
+              description: "{MINIMAL_DESCRIPTION}",
+              post: parseTypedPost({{
+                description: "{MINIMAL_DESCRIPTION}",
+                lang: "en",
+                localeCode: "en",
+                permalink: "/blog/__rendering_minimal/",
+                title: "{MINIMAL_TITLE}",
+              }}),
+            }};
             """
         ),
         encoding="utf-8",
@@ -366,8 +408,13 @@ def build_fixtures() -> subprocess.CompletedProcess[str]:
             stderr=subprocess.PIPE,
         )
     finally:
-        RICH_SOURCE_FIXTURE.unlink(missing_ok=True)
-        MINIMAL_SOURCE_FIXTURE.unlink(missing_ok=True)
+        for fixture in (
+            RICH_SOURCE_FIXTURE,
+            RICH_DATA_FIXTURE,
+            MINIMAL_SOURCE_FIXTURE,
+            MINIMAL_DATA_FIXTURE,
+        ):
+            fixture.unlink(missing_ok=True)
 
 
 def parse_html(path: Path, failures: list[str]) -> BlogPostRenderingParser | None:

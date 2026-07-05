@@ -14,6 +14,7 @@ SITE_DIR = ROOT / "site"
 SOURCE_FIXTURE = SITE_DIR / "src" / "__code_block_copy_smoke.md"
 OUTPUT_FIXTURE = SITE_DIR / "_site" / "__code_block_copy_smoke" / "index.html"
 BLOG_SOURCE_FIXTURE = SITE_DIR / "src" / "__blog_code_block_copy_smoke.md"
+BLOG_DATA_FIXTURE = SITE_DIR / "src" / "__blog_code_block_copy_smoke.11tydata.js"
 BLOG_OUTPUT_FIXTURE = SITE_DIR / "_site" / "blog" / "__code_block_copy_smoke" / "index.html"
 SCRIPT_OUTPUT = SITE_DIR / "_site" / "assets" / "js" / "code-block-copy.js"
 STYLE_OUTPUT = SITE_DIR / "_site" / "assets" / "css" / "style.css"
@@ -119,13 +120,6 @@ def build_fixture() -> subprocess.CompletedProcess[str]:
             ---
             layout: layouts/article.njk
             permalink: /blog/__code_block_copy_smoke/
-            lang: en
-            localeCode: en
-            title: Blog Code Block Copy Smoke | fkst
-            description: "Smoke fixture for blog code snippet copy controls."
-            articleEyebrow: Blog smoke
-            articleTitle: Blog snippet copy scaffold
-            articleIntro: "Fixture article for blog code snippet copy controls."
             brandHref: /
             nav: []
             footerText: Smoke fixture
@@ -137,6 +131,34 @@ def build_fixture() -> subprocess.CompletedProcess[str]:
             const html = "<button>Copy</button>";
             console.log("blog copy scaffold & exact");
             ```
+            """
+        ),
+        encoding="utf-8",
+    )
+    BLOG_DATA_FIXTURE.write_text(
+        textwrap.dedent(
+            """\
+            "use strict";
+
+            const { parseTypedPost } = require("../lib/posts");
+
+            module.exports = {
+              lang: "en",
+              localeCode: "en",
+              title: "Blog Code Block Copy Smoke | fkst",
+              description: "Smoke fixture for blog code snippet copy controls.",
+              post: parseTypedPost({
+                articleEyebrow: "Blog smoke",
+                articleIntro: "Fixture article for blog code snippet copy controls.",
+                articleTitle: "Blog snippet copy scaffold",
+                category: { slug: "news" },
+                description: "Smoke fixture for blog code snippet copy controls.",
+                lang: "en",
+                localeCode: "en",
+                permalink: "/blog/__code_block_copy_smoke/",
+                title: "Blog Code Block Copy Smoke | fkst",
+              }),
+            };
             """
         ),
         encoding="utf-8",
@@ -153,6 +175,7 @@ def build_fixture() -> subprocess.CompletedProcess[str]:
     finally:
         SOURCE_FIXTURE.unlink(missing_ok=True)
         BLOG_SOURCE_FIXTURE.unlink(missing_ok=True)
+        BLOG_DATA_FIXTURE.unlink(missing_ok=True)
 
 
 def parse_output(path: Path, failures: list[str]) -> CodeBlockCopyParser | None:
