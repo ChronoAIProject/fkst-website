@@ -40,6 +40,10 @@ const pageFiles = {
     en: "about.html",
     zh: "zh/about.html",
   },
+  status: {
+    en: "status/",
+    zh: "status/",
+  },
 };
 
 const navLabels = {
@@ -48,12 +52,14 @@ const navLabels = {
     architecture: "Architecture",
     doctrine: "Doctrine",
     about: "About",
+    status: "Status",
   },
   zh: {
     home: "首页",
     architecture: "架构",
     doctrine: "信条",
     about: "关于",
+    status: "Status",
   },
 };
 
@@ -111,6 +117,7 @@ export function getNav(locale, currentPage) {
     "architecture",
     "doctrine",
     "about",
+    "status",
   ].map((key) => ({
     label: labels[key],
     href: getHref(locale, currentPage, locale, key),
@@ -119,7 +126,7 @@ export function getNav(locale, currentPage) {
 }
 
 export function getLanguageSwitch(locale, pageKey) {
-  return [
+  const items = [
     {
       label: "EN",
       href: getHref(locale, pageKey, "en", pageKey),
@@ -131,4 +138,13 @@ export function getLanguageSwitch(locale, pageKey) {
       current: locale === "zh",
     },
   ];
+  return items.reduce((unique, item) => {
+    const existingIndex = unique.findIndex((existing) => existing.href === item.href);
+    if (existingIndex === -1) {
+      unique.push(item);
+    } else if (item.current) {
+      unique[existingIndex] = item;
+    }
+    return unique;
+  }, []);
 }

@@ -1,0 +1,66 @@
+---
+import PageLayout from "../../layouts/PageLayout.astro";
+import { loadBoardSnapshot } from "../../lib/boardSnapshot";
+
+export const routePattern = "/status/";
+
+const board = await loadBoardSnapshot();
+const frontmatter = {
+  title: "fkst status",
+  description: "Current fkst dogfood board snapshot.",
+  lang: "en",
+  pageKey: "status",
+  eyebrow: "Dogfood board",
+  heading: "Status",
+  intro: `${board.counts.items} open board item${board.counts.items === 1 ? "" : "s"} from ${board.snapshot.repo}.`,
+};
+---
+
+<PageLayout frontmatter={frontmatter}>
+  <section class="status-summary" aria-label="Board totals">
+    <div>
+      <span>{board.counts.items}</span>
+      <p>Open items</p>
+    </div>
+    <div>
+      <span>{board.counts.issues}</span>
+      <p>Issues</p>
+    </div>
+    <div>
+      <span>{board.counts.prs}</span>
+      <p>Pull requests</p>
+    </div>
+  </section>
+
+  <div class="status-table-wrap">
+    <table class="status-table">
+      <caption>Current board snapshot</caption>
+      <thead>
+        <tr>
+          <th scope="col">Item</th>
+          <th scope="col">State</th>
+          <th scope="col">Labels</th>
+          <th scope="col">Updated</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          board.rows.map((row) => (
+            <tr>
+              <th scope="row">
+                <a href={row.url}>{row.identifier}</a>
+                <span>{row.kind}</span>
+                <p>{row.title}</p>
+              </th>
+              <td>{row.state}</td>
+              <td>{row.labelCount}</td>
+              <td>
+                <time datetime={row.updatedAt}>{row.updatedAt}</time>
+              </td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+</PageLayout>
