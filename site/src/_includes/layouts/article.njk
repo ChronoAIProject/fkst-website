@@ -1,9 +1,9 @@
 {% extends "layouts/base.njk" %}
 {% set docsTocEntries = page | docsTocEntries %}
 {% set hasDocsTocEntries = (docsTocEntries | length) > 1 %}
-{% set postTitle = articleTitle or post.articleTitle or title %}
-{% set postIntro = articleIntro or post.articleIntro %}
-{% set postEyebrow = articleEyebrow or post.articleEyebrow %}
+{% set postTitle = post.articleTitle or articleTitle or title %}
+{% set postIntro = post.articleIntro or articleIntro %}
+{% set postEyebrow = post.articleEyebrow or articleEyebrow %}
 
 {% block content %}
 {% include "components/ArticleScrollProgress.njk" %}

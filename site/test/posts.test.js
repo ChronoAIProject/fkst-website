@@ -13,6 +13,7 @@ const {
   parseTypedPost,
   postFromEleventyData,
 } = require("../lib/posts");
+const blogPosts = require("../src/_data/blogPosts");
 
 function assertErrorSet(actual, expected) {
   assert.deepEqual([...actual].sort(), [...expected].sort());
@@ -133,6 +134,35 @@ test("parseFrontmatterPost adapts legacy frontmatter YAML-shaped data", () => {
   assert.equal(post.publishedDate, "2026-07-05");
   assert.deepEqual(post.category, { slug: "news" });
   assert.deepEqual(post.nav, []);
+});
+
+test("repo-local blog index posts are normalized through the typed post contract", () => {
+  assert.equal(blogPosts.en.length, 3);
+  assert.equal(blogPosts.zh.length, 3);
+
+  for (const item of [...blogPosts.en, ...blogPosts.zh]) {
+    assert.equal(item.post.contract, POST_CONTRACT_VERSION);
+    assert.equal(item.post.sourceFormat, POST_SOURCE_TYPED);
+    assert.equal(item.post.publishedDate, "2026-07-05");
+    assert.match(item.post.permalink, /^\/(zh\/)?blog\//);
+    assert.ok(item.post.articleTitle);
+    assert.ok(item.post.summary);
+    assert.ok(item.post.category.slug);
+    assert.ok(item.displayDate);
+  }
+
+  assert.deepEqual(
+    blogPosts.en.map((item) => item.post.category.slug),
+    ["news", "release", "deep-dive"]
+  );
+  assert.deepEqual(
+    blogPosts.zh.map((item) => item.post.category.slug),
+    ["news", "release", "deep-dive"]
+  );
+  assert.deepEqual(
+    blogPosts.en.map((item) => item.post.sourceFormat),
+    ["typed-schema", "typed-schema", "typed-schema"]
+  );
 });
 
 test("postFromEleventyData leaves non-blog pages outside the post contract", () => {
