@@ -46,7 +46,10 @@ a:focus-visible {
   width: 0.72em;
 }
 .external-link-marker::before,
-.external-link-marker::after { content: ""; position: absolute; }
+.external-link-marker::after {
+  content: "";
+  position: absolute;
+}
 .external-link-marker::before {
   background: currentColor;
   height: 1.5px;
