@@ -7,48 +7,11 @@
 
 {% block content %}
 {% include "components/ArticleScrollProgress.njk" %}
-<section class="page-header article-header" aria-labelledby="page-title">
-  {% if postEyebrow %}
-    <p class="eyebrow">{{ postEyebrow }}</p>
-  {% endif %}
-  <h1 id="page-title">{{ postTitle }}</h1>
-  {% set estimate = content | readingTime %}
-  <p class="article-meta" data-reading-time aria-label="Estimated reading time">
-    <span>{{ estimate.label }}</span>
-  </p>
-  {% if postIntro %}
-    <p class="page-intro">{{ postIntro }}</p>
-  {% endif %}
-</section>
-
-<div
-  class="article-shell"
-  data-article-shell
-  data-docs-sidebar-shell
-  {% if post %}
-    data-post-contract="{{ post.contract }}"
-    data-post-source-format="{{ post.sourceFormat }}"
-  {% endif %}
-  {% if hasDocsTocEntries %}
-    data-docs-sidebar-open
-  {% else %}
-    data-docs-sidebar-state="closed"
-    data-docs-sidebar-empty
-  {% endif %}
->
-  {% if hasDocsTocEntries %}
-    {% include "components/DocsSidebar.njk" %}
-  {% endif %}
-  <div class="page-content" data-article-scroll-content data-docs-sidebar-content>
-  {{ content | safe }}
-  </div>
-</div>
+{% include "components/ArticleHeader.njk" %}
+{% include "components/ArticleShell.njk" %}
 {% endblock %}
 
 {% block scripts %}
     {{ super() }}
-    <script src="{{ "/assets/js/article-scroll-progress.js" | url }}" defer data-article-scroll-progress-script></script>
-    {% if hasDocsTocEntries %}
-      <script src="{{ "/assets/js/docs-sidebar.js" | url }}" defer data-docs-sidebar-script></script>
-    {% endif %}
+    {% include "components/ArticleScripts.njk" %}
 {% endblock %}
