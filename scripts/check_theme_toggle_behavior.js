@@ -46,10 +46,12 @@ function testBuiltPagesIncludeOneEnabledToggleAndScript() {
 
     const controls = header.querySelectorAll("[data-theme-toggle-control]");
     const buttons = header.querySelectorAll("[data-theme-toggle-button]");
+    const bootScripts = document.querySelectorAll("script[data-theme-boot-script]");
     const scripts = document.querySelectorAll("script[data-theme-script]");
 
     assert.equal(controls.length, 1, `${route}: expected one theme toggle control`);
     assert.equal(buttons.length, 1, `${route}: expected one theme toggle button`);
+    assert.equal(bootScripts.length, 1, `${route}: expected one theme boot script`);
     assert.equal(scripts.length, 1, `${route}: expected one theme script`);
 
     const button = buttons[0];
@@ -63,6 +65,11 @@ function testBuiltPagesIncludeOneEnabledToggleAndScript() {
     const script = scripts[0];
     assert.match(script.getAttribute("src") || "", /\/assets\/js\/theme\.js$/, `${route}: script path mismatch`);
     assert.equal(script.hasAttribute("defer"), true, `${route}: theme script must be deferred`);
+
+    const bootScript = bootScripts[0].textContent.replace(/\s+/g, " ");
+    assert.ok(bootScript.includes("fkst-theme"), `${route}: boot script missing storage key`);
+    assert.ok(bootScript.includes("data-theme"), `${route}: boot script missing root theme hook`);
+    assert.ok(bootScript.includes("localStorage.getItem"), `${route}: boot script must restore stored theme`);
   }
 }
 
@@ -71,7 +78,6 @@ function testStylesheetExposesExplicitThemeHooks() {
   const requiredNeedles = [
     '[data-theme="dark"]',
     '[data-theme="light"]',
-    ':root:not([data-theme="light"])',
     '.theme-toggle-button[aria-checked="true"] .theme-toggle-knob',
     'transform: translateX(20px)'
   ];
@@ -79,6 +85,11 @@ function testStylesheetExposesExplicitThemeHooks() {
   for (const needle of requiredNeedles) {
     assert.ok(style.includes(needle), `stylesheet missing theme contract: ${needle}`);
   }
+  assert.equal(
+    style.includes("prefers-color-scheme"),
+    false,
+    "stylesheet must not add system-theme detection for the manual toggle"
+  );
 }
 
 function main() {
