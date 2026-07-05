@@ -26,7 +26,7 @@ function fixtureMarkup() {
       <a id="header-chrome-link" href="https://example.invalid/header">Brand</a>
       <nav class="top-nav"><a id="nav-chrome-link" href="https://example.invalid/nav">Docs</a></nav>
       <div class="header-actions">
-        <nav class="locale-switcher"><a href="/zh/">中文</a></nav>
+        <nav class="locale-switcher"><a id="locale-switcher-link" href="/zh/">中文</a></nav>
         <span class="theme-toggle-control"><button type="button">Theme</button></span>
         <span class="print-page-control"><button type="button">Print</button></span>
       </div>
@@ -526,6 +526,7 @@ function assertLinkUrlPrinting(document, rules) {
   const chromeLinksWithoutPrintedUrls = [
     "#header-chrome-link",
     "#nav-chrome-link",
+    "#locale-switcher-link",
     "#sidebar-link",
     "#repo-link",
     "#footer-chrome-link"
