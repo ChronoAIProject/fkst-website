@@ -134,7 +134,8 @@ def build_fixture() -> subprocess.CompletedProcess[str]:
             The snippet below exercises the article/blog rendering path.
 
             ```js
-            console.log("blog copy scaffold");
+            const html = "<button>Copy</button>";
+            console.log("blog copy scaffold & exact");
             ```
             """
         ),
@@ -219,9 +220,13 @@ def main() -> int:
             failures.append("blog copy button label is not the idle Copy label")
         if "".join(blog_parser.status_text).strip():
             failures.append("blog copy status should be empty before client activation")
-        if "".join(blog_parser.code_text) != 'console.log("blog copy scaffold");\n':
+        expected_blog_code = (
+            'const html = "<button>Copy</button>";\n'
+            'console.log("blog copy scaffold & exact");\n'
+        )
+        if "".join(blog_parser.code_text) != expected_blog_code:
             failures.append("blog code block rendered text does not match the snippet contents")
-        if blog_parser.wrapper_text != ['console.log("blog copy scaffold");\n']:
+        if blog_parser.wrapper_text != [expected_blog_code]:
             failures.append("blog copy source contract does not expose exact code text")
         if blog_parser.wrapper_language != ["js"]:
             failures.append("blog copy source contract does not expose language metadata")
