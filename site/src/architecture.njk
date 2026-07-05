@@ -39,6 +39,12 @@ footerLabel: Back to home
       the durable graph, departments declare concrete responsibilities,
       and persons are spawned workers that execute bounded tasks.
     </p>
+    <h3 id="department-responsibilities" class="heading-anchor-target">Department responsibilities{% headingAnchor "department-responsibilities", "Department responsibilities", "Link to Department responsibilities section", 3 %}</h3>
+    <p>
+      Departments are first-class wiring points. They make extension
+      behavior explicit in the graph instead of hiding work behind
+      runtime interception.
+    </p>
     <ul>
       <li>Sources raise events from outside facts such as GitHub issues or timers.</li>
       <li>Fanout gives multiple departments the same fact without runtime interception.</li>
@@ -73,6 +79,7 @@ footerLabel: Back to home
       fkst-packages owns reusable package patterns, and fkst-website
       adds only website-domain Lua behavior.
     </p>
+    <h3 id="package-root-union" class="heading-anchor-target">Package root union{% headingAnchor "package-root-union", "Package root union", "Link to Package root union section", 3 %}</h3>
     <p>
       Packages can be flat or composed. A composed package references
       dependencies through declared composition, and the engine receives

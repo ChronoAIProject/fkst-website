@@ -24,7 +24,7 @@
     class="docs-sidebar-panel"
     id="docs-sidebar-panel"
     data-docs-sidebar-panel
-    aria-label="Article sections"
+    aria-label="{% if lang == "zh-Hans" %}文章章节{% else %}Article sections{% endif %}"
     {% if not hasDocsTocEntries %}hidden{% endif %}
   >
     <ol class="docs-sidebar-list" data-docs-sidebar-list>

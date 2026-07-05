@@ -99,6 +99,12 @@ function createSidebarMarkup(content = "") {
     <li data-docs-toc-entry data-docs-toc-level="2" data-docs-toc-depth="2">
       <a href="#delivery-model" data-docs-toc-link>Reliable delivery</a>
     </li>
+    <li data-docs-toc-entry data-docs-toc-level="3" data-docs-toc-depth="3">
+      <a href="#%E5%86%99%20posture" data-docs-toc-link>写 posture</a>
+    </li>
+    <li data-docs-toc-entry data-docs-toc-level="3" data-docs-toc-depth="3">
+      <a href="#missing-target" data-docs-toc-link>Missing target</a>
+    </li>
   `;
 
   return `<!doctype html>
@@ -248,6 +254,11 @@ function createHarness(options = {}) {
 
 function createSidebarHarness(options = {}) {
   const errors = [];
+  const listeners = [];
+  const rafCallbacks = [];
+  const timeoutCallbacks = [];
+  const headingTops = { ...(options.headingTops || {}) };
+  let viewportHeight = options.viewportHeight ?? 1000;
   const html = options.html || createSidebarMarkup(options.content || `
     <section>
       <h2 id="company-model">Company model<a href="#company-model" data-heading-anchor>#</a></h2>
@@ -273,6 +284,43 @@ function createSidebarHarness(options = {}) {
   });
 
   installContentEditable(window);
+
+  Object.defineProperty(window, "innerHeight", {
+    configurable: true,
+    get() {
+      return viewportHeight;
+    }
+  });
+
+  window.requestAnimationFrame = (callback) => {
+    rafCallbacks.push(callback);
+    return rafCallbacks.length;
+  };
+  window.setTimeout = (callback, delay) => {
+    timeoutCallbacks.push({ callback, delay });
+    return timeoutCallbacks.length;
+  };
+  const addEventListener = window.addEventListener.bind(window);
+  window.addEventListener = (name, callback, listenerOptions) => {
+    listeners.push({ name, callback, options: listenerOptions });
+    return addEventListener(name, callback, listenerOptions);
+  };
+
+  for (const [id, top] of Object.entries(headingTops)) {
+    const heading = document.getElementById(id);
+    if (heading) {
+      heading.getBoundingClientRect = () => ({
+        bottom: headingTops[id] + 40,
+        height: 40,
+        left: 0,
+        right: 0,
+        top: headingTops[id],
+        width: 0,
+        x: 0,
+        y: headingTops[id]
+      });
+    }
+  }
 
   if (options.localStorage) {
     Object.defineProperty(window, "localStorage", {
@@ -321,11 +369,35 @@ function createSidebarHarness(options = {}) {
     document,
     dom,
     errors,
+    listeners,
+    rafCallbacks,
     sidebar: document.querySelector("[data-docs-sidebar]"),
     sidebarPanel: document.querySelector("[data-docs-sidebar-panel]"),
     sidebarList: document.querySelector("[data-docs-sidebar-list]"),
     sidebarShell: document.querySelector("[data-docs-sidebar-shell]"),
     sidebarToggle: document.querySelector("[data-docs-sidebar-toggle]"),
+    timeoutCallbacks,
+    dispatch(name) {
+      window.dispatchEvent(new window.Event(name));
+    },
+    flushRaf() {
+      const callbacks = rafCallbacks.splice(0);
+      for (const callback of callbacks) {
+        callback(0);
+      }
+    },
+    flushTimeouts() {
+      const callbacks = timeoutCallbacks.splice(0);
+      for (const { callback } of callbacks) {
+        callback();
+      }
+    },
+    setHeadingTop(id, top) {
+      headingTops[id] = top;
+    },
+    setViewportHeight(value) {
+      viewportHeight = value;
+    },
     window
   };
 }
@@ -428,30 +500,47 @@ function sidebarLinks(harness) {
   return Array.from(harness.sidebarList.querySelectorAll("a"));
 }
 
+function activeSidebarLinks(harness) {
+  return sidebarLinks(harness).filter((link) => link.getAttribute("aria-current") === "location");
+}
+
+function assertActiveSidebarHref(harness, expectedHref) {
+  assert.deepEqual(
+    activeSidebarLinks(harness).map((link) => link.getAttribute("href")),
+    expectedHref ? [expectedHref] : []
+  );
+}
+
 function expectedHeadingLinks(document) {
   const content = document.querySelector("[data-docs-sidebar-content]");
   assert.ok(content, "expected docs sidebar content root");
 
-  return Array.from(content.querySelectorAll("h2[id]"))
+  return Array.from(content.querySelectorAll("h2[id], h3[id]"))
     .map((heading) => {
       const clone = heading.cloneNode(true);
       clone.querySelectorAll("[data-heading-anchor]").forEach((anchor) => anchor.remove());
       return {
         href: `#${encodeURIComponent(heading.id)}`,
         id: heading.id,
-        label: normalizeText(clone.textContent)
+        label: normalizeText(clone.textContent),
+        level: heading.tagName.toLowerCase() === "h3" ? "3" : "2"
       };
     })
     .filter((heading) => heading.label);
 }
 
 function expectedRenderedTocLinks(document) {
-  return Array.from(document.querySelectorAll("[data-docs-toc-entry] [data-docs-toc-link]"))
-    .map((link) => ({
-      href: link.getAttribute("href"),
-      label: normalizeText(link.textContent)
-    }))
-    .filter((link) => link.href && link.label);
+  return Array.from(document.querySelectorAll("[data-docs-toc-entry]"))
+    .map((entry) => {
+      const link = entry.querySelector("[data-docs-toc-link]");
+      return {
+        depth: entry.getAttribute("data-docs-toc-depth"),
+        href: link ? link.getAttribute("href") : "",
+        label: link ? normalizeText(link.textContent) : "",
+        level: entry.getAttribute("data-docs-toc-level")
+      };
+    })
+    .filter((entry) => entry.href && entry.label);
 }
 
 function openFromOpener(harness) {
@@ -519,8 +608,10 @@ function testBuiltArticlePagesRenderDocsSidebarNavigation() {
     assert.deepEqual(
       renderedTocLinks,
       expectedLinks.map((heading) => ({
+        depth: heading.level,
         href: heading.href,
-        label: heading.label
+        label: heading.label,
+        level: heading.level
       })),
       `${route}: rendered TOC must mirror article headings`
     );
@@ -534,7 +625,7 @@ function testBuiltArticlePagesRenderDocsSidebarNavigation() {
         href: heading.href,
         label: heading.label
       })),
-      `${route}: sidebar links must mirror article h2 ids and labels`
+      `${route}: sidebar links must mirror article heading ids and labels`
     );
     assert.equal(
       links.some((link) => normalizeText(link.textContent).includes("#")),
@@ -674,6 +765,76 @@ function testDocsSidebarInitialStateBuildsNavigation() {
     ]
   );
   assert.equal(harness.sidebarToggle.disabled, false);
+  assertNoClientErrors(harness.errors);
+}
+
+function testDocsSidebarInitialHashActivatesDecodedTarget() {
+  const harness = createSidebarHarness({
+    content: `
+      <section>
+        <h2 id="company-model">Company model<a href="#company-model" data-heading-anchor>#</a></h2>
+      </section>
+      <section>
+        <h2 id="delivery-model">Reliable delivery<a href="#delivery-model" data-heading-anchor>#</a></h2>
+      </section>
+      <section>
+        <h3 id="写 posture">写 posture<a href="#写 posture" data-heading-anchor>#</a></h3>
+      </section>
+    `,
+    url: "https://fkst.local/docs.html#%E5%86%99%20posture"
+  });
+
+  assertActiveSidebarHref(harness, "#%E5%86%99%20posture");
+  assert.equal(harness.rafCallbacks.length, 0);
+  assertNoClientErrors(harness.errors);
+}
+
+function testDocsSidebarScrollHashAndClickActiveState() {
+  const harness = createSidebarHarness({
+    content: `
+      <section>
+        <h2 id="company-model">Company model<a href="#company-model" data-heading-anchor>#</a></h2>
+      </section>
+      <section>
+        <h2 id="delivery-model">Reliable delivery<a href="#delivery-model" data-heading-anchor>#</a></h2>
+      </section>
+      <section>
+        <h3 id="写 posture">写 posture<a href="#写 posture" data-heading-anchor>#</a></h3>
+      </section>
+    `,
+    headingTops: {
+      "company-model": 20,
+      "delivery-model": 360,
+      "写 posture": 720
+    },
+    url: "https://fkst.local/docs.html"
+  });
+
+  assert.equal(harness.rafCallbacks.length, 1);
+  harness.flushRaf();
+  assertActiveSidebarHref(harness, "#company-model");
+
+  harness.setHeadingTop("company-model", -300);
+  harness.setHeadingTop("delivery-model", 40);
+  harness.setHeadingTop("写 posture", 520);
+  harness.dispatch("scroll");
+  assert.equal(harness.rafCallbacks.length, 1);
+  harness.flushRaf();
+  assertActiveSidebarHref(harness, "#delivery-model");
+
+  harness.window.location.hash = "#%E5%86%99%20posture";
+  harness.dispatch("hashchange");
+  assertActiveSidebarHref(harness, "#%E5%86%99%20posture");
+
+  sidebarLinks(harness)[0].click();
+  assertActiveSidebarHref(harness, "#company-model");
+
+  sidebarLinks(harness).at(-1).click();
+  assertActiveSidebarHref(harness, null);
+
+  harness.window.location.hash = "#missing-target";
+  harness.dispatch("hashchange");
+  assertActiveSidebarHref(harness, null);
   assertNoClientErrors(harness.errors);
 }
 
@@ -818,6 +979,8 @@ function main() {
     testDocsSidebarShortcutRejectsNonMatchingKeys,
     testBackdropClickClosesOnlyOutsidePanel,
     testDocsSidebarInitialStateBuildsNavigation,
+    testDocsSidebarInitialHashActivatesDecodedTarget,
+    testDocsSidebarScrollHashAndClickActiveState,
     testDocsSidebarPersistedClosedState,
     testDocsSidebarShortcutTogglesAndPersists,
     testDocsSidebarPersistsAcrossReload,

@@ -7,6 +7,7 @@
   const panel = document.querySelector("[data-docs-sidebar-panel]");
   const toggle = document.querySelector("[data-docs-sidebar-toggle]");
   const list = document.querySelector("[data-docs-sidebar-list]");
+  const activeAttribute = "aria-current";
 
   if (
     !(shell instanceof HTMLElement) ||
@@ -84,6 +85,86 @@
 
   const isOpen = () => shell.dataset.docsSidebarState !== closedValue;
   const toggleOpen = () => setOpen(!isOpen());
+  const links = Array.from(list.querySelectorAll("[data-docs-toc-link]"))
+    .filter((link) => link instanceof HTMLAnchorElement);
+  const decodeFragment = (value) => {
+    const normalized = String(value || "").replace(/^#/, "");
+    if (!normalized) {
+      return "";
+    }
+
+    try {
+      return decodeURIComponent(normalized);
+    } catch (_error) {
+      return normalized;
+    }
+  };
+  const linkTargetId = (link) => decodeFragment(link.hash || link.getAttribute("href"));
+  const targets = links
+    .map((link) => {
+      const id = linkTargetId(link);
+      const target = id ? document.getElementById(id) : null;
+      return target ? { id, link, target } : null;
+    })
+    .filter(Boolean);
+  let activeLink = null;
+  let updateQueued = false;
+
+  const setActiveLink = (link) => {
+    if (activeLink === link) {
+      return;
+    }
+    if (activeLink) {
+      activeLink.removeAttribute(activeAttribute);
+    }
+    activeLink = link;
+    if (activeLink) {
+      activeLink.setAttribute(activeAttribute, "location");
+    }
+  };
+
+  const activateTargetId = (id) => {
+    const target = targets.find((item) => item.id === id);
+    setActiveLink(target ? target.link : null);
+    return Boolean(target);
+  };
+
+  const activateFromHash = () => activateTargetId(decodeFragment(window.location.hash));
+
+  const viewportAnchor = () => Math.max(80, Math.round(window.innerHeight * 0.2));
+
+  const updateActiveFromScroll = () => {
+    updateQueued = false;
+    if (targets.length === 0) {
+      setActiveLink(null);
+      return;
+    }
+
+    const threshold = viewportAnchor();
+    let activeTarget = targets[0];
+    for (const target of targets) {
+      const box = target.target.getBoundingClientRect();
+      if (box.top <= threshold) {
+        activeTarget = target;
+      } else {
+        break;
+      }
+    }
+    setActiveLink(activeTarget.link);
+  };
+
+  const scheduleScrollUpdate = () => {
+    if (updateQueued) {
+      return;
+    }
+    updateQueued = true;
+
+    if (typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(updateActiveFromScroll);
+    } else {
+      window.setTimeout(updateActiveFromScroll, 16);
+    }
+  };
 
   const isEditableTarget = (target) => {
     if (!(target instanceof Element)) {
@@ -109,9 +190,27 @@
   };
 
   setOpen(readStoredState() !== closedValue, { persist: false });
+  if (!window.location.hash || !activateFromHash()) {
+    scheduleScrollUpdate();
+  }
 
   toggle.disabled = false;
   toggle.addEventListener("click", toggleOpen);
+  for (const link of links) {
+    link.addEventListener("click", () => {
+      activateTargetId(linkTargetId(link));
+    });
+  }
+
+  window.addEventListener("hashchange", () => {
+    if (!window.location.hash) {
+      setActiveLink(null);
+      return;
+    }
+    activateFromHash();
+  });
+  window.addEventListener("scroll", scheduleScrollUpdate, { passive: true });
+  window.addEventListener("resize", scheduleScrollUpdate);
 
   document.addEventListener("keydown", (event) => {
     if (!shortcutMatches(event) || isEditableTarget(event.target)) {
