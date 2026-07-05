@@ -107,6 +107,7 @@ cmd_check() {
 site_build_and_smoke() {
   node "$ROOT/site/test/externalLinks.test.js"
   node "$ROOT/site/test/blogCategoryBadges.test.js"
+  node "$ROOT/site/test/posts.test.js"
   node "$ROOT/site/test/headingAnchors.test.js"
   node "$ROOT/site/test/docsToc.test.js"
   node "$ROOT/site/test/shortcutActions.test.js"
@@ -126,6 +127,7 @@ site_build_and_smoke() {
   python3 -B "$ROOT/scripts/check_print_page_button.py"
   python3 -B "$ROOT/scripts/check_external_links.py"
   python3 -B "$ROOT/scripts/check_blog_category_badges.py"
+  python3 -B "$ROOT/scripts/check_posts_contract.py"
   python3 -B "$ROOT/scripts/check_locale_scaffold.py"
   node "$ROOT/scripts/check_locale_behavior.js"
   node "$ROOT/scripts/check_theme_toggle_behavior.js"
