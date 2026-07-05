@@ -116,6 +116,7 @@ site_build_and_smoke() {
   python3 -B "$ROOT/scripts/check_docs_toc.py"
   python3 -B "$ROOT/scripts/check_back_to_top.py"
   python3 -B "$ROOT/scripts/check_code_block_copy.py"
+  python3 -B "$ROOT/scripts/check_blog_post_rendering.py"
   node "$ROOT/scripts/check_code_block_copy_behavior.js"
   node "$ROOT/scripts/check_docs_sidebar_edge_behavior.js"
   node "$ROOT/scripts/check_keyboard_shortcuts_behavior.js"
