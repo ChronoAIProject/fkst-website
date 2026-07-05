@@ -4,64 +4,75 @@ The third repo (library C) of the fkst ecosystem: a website-domain Lua package l
 
 This repo is **English-primary, zh-en bilingual**: source files are English; external artifacts (docs, issues, PRs) are English-first with Chinese as a secondary layer; the site itself is English-first with a Chinese version.
 
-（中文：fkst 生态第三仓（库 C），website 域 Lua 包库，组合库 B 的包开发；本仓英文为主、中英双语。）
+Official site: https://chronoaiproject.github.io/fkst-website/
 
-官方网站：https://chronoaiproject.github.io/fkst-website/
+## Repository Role And Extension Model
 
-## 仓定位与扩展模型
+This repo follows the same engine-package contract as `fkst-packages`; the authoritative contract is `docs/package-repo-contract.md` in `fkst-substrate`. Reuse of library B packages follows three explicit extension levels, from least invasive to most invasive:
 
-本仓遵循与 fkst-packages 相同的 engine↔package 契约（权威：fkst-substrate 的 `docs/package-repo-contract.md`）。对库 B 包的复用按三档扩展力度，从低往高用，逢真需求才升级：
-
-| 档位 | 机制 | 状态 |
+| Level | Mechanism | Status |
 |---|---|---|
-| 1. Tap（旁路观察） | 本仓包额外消费库 B 包的 `pkg.queue`（fanout 多消费者），原流不变 | 引擎已支持 |
-| 2. Adapter 接线 | composed 包把库 B 的输出 port 经本仓 adapter dept 接到下游（autochrono 范式） | 引擎已支持 |
-| 3. 静态 rebind 声明 | 基础包声明某条边 rebindable，composed 包静态改接线 | 不存在；攒够档位 2 表达不了的真实案例再向 fkst-substrate 提案 |
+| 1. Tap | This repo's packages additionally consume a library B package queue through `pkg.queue` fanout. The original flow is unchanged. | Supported by the engine. |
+| 2. Adapter wiring | A composed package wires a library B output port through this repo's adapter department and then to downstream consumers. | Supported by the engine. |
+| 3. Static rebind declaration | A base package declares an edge as rebindable, and a composed package statically rewires that edge. | Not available. Propose it in `fkst-substrate` only after real cases cannot be expressed with level 2. |
 
-**不做运行时拦截**：插入的中间环节必须是一等显式 department（有自己的 spec / dedup / source_ref 纪律，graph scan 可见）。接线透明（A/B 不感知对端）是设计目标；投递语义透明（provenance / 幂等 / retry 不变）做不到也不假装。
+Runtime interception is not part of this repo's model. Any inserted intermediate step must be a first-class explicit department with its own spec, deduplication rule, and `source_ref` discipline so graph scans can see it. Transparent wiring, where A and B do not know each other, is a design goal; transparent delivery semantics, where provenance, idempotency, and retry behavior remain unchanged, is not assumed.
 
-跨仓引用库 B 的包 = pin 住 fkst-packages 的 git ref + supervise 时把其包目录作为额外 `--package-root` 传入（多 package-root union 是引擎一等能力）。
+Cross-repo references to library B packages are expressed by pinning the `fkst-packages` git ref and passing its package directories as additional `--package-root` entries during supervision. The engine treats multi-root package unions as a first-class capability.
 
-## 包
+## Website Source
+
+The hand-authored static site lives under `site/` and is built with Eleventy:
+
+- `site/package.json` defines `npm run build` as `eleventy` and `npm run dev` as `eleventy --serve`.
+- `site/eleventy.config.js` uses `site/src` as the input directory, `site/src/_includes` for layouts and components, and `site/_site` as the output directory.
+- Top-level English pages live in `site/src/*.njk`.
+- Chinese pages live in `site/src/zh/*.njk`.
+- Shared data modules live in `site/src/_data/`.
+- Layouts, components, and template utilities live in `site/src/_includes/`.
+- Static assets live in `site/src/assets/` and are copied to `assets/` by Eleventy passthrough copy.
+- `site/probe-manifest` is copied by Eleventy passthrough copy for the read-only live probe.
+
+There is no `site/public/` directory in the current tree.
+
+## Packages
 
 - `.fkst/local-packages/site-board/` (composed): site data source v0. A cron poll reads `FKST_GITHUB_REPO` open issues and open PRs, then builds the `fkst.site.board.v1` snapshot JSON. The output directory comes from `FKST_SITE_OUT`, defaults to `build/fkst/data`, and receives atomic `fkst.site.board.v1.json` and `manifest.json` writes through tmp-file rename. It never writes to hand-authored `site/`. After GitHub Pages deploy, the read-only live probe reads `site/probe-manifest` and only emits grep-friendly `PROBE` ok/fail/skip logs.
 
-## 构建 / 测试
+This repo is website-source-primary, so its own Lua packages are committed under `.fkst/local-packages/`. Cross-repo package roots are listed in `.fkst/compose/package-roots`, and `fkst.workspace.toml` names local packages, local libraries, and the `fkst-packages-platform` external source.
+
+## Build And Test
 
 ```sh
-cp env.example .env   # 填 BIN=<fkst-substrate>/target/debug/fkst-framework
-scripts/run.sh test   # self-test + conformance + 全部包测试
-scripts/run.sh check  # pinned shared source ratchets + engine host conformance
+cp env.example .env
+# Set BIN=<fkst-substrate>/target/debug/fkst-framework in .env.
+
+scripts/run.sh test-affected
+scripts/run.sh test
+scripts/run.sh check
 ```
 
-CI 从 `.fkst-substrate-ref`（git source-pin）checkout 引擎源码并构建 fkst-framework，再跑 `scripts/run.sh check` 和 `scripts/run.sh test`。
+`scripts/run.sh test-affected` runs the current affected-test path for local iteration, which includes the Eleventy build and site smoke checks. `scripts/run.sh test` delegates to the pinned `fkst-packages` host runner for package tests and composed conformance. `scripts/run.sh check` runs the shared source ratchets, engine host conformance, and the website probe test.
 
-## Shared conformance
+CI checks out and builds the `fkst-substrate` source pinned by `.fkst-substrate-ref`, hydrates the `fkst-packages` platform source pinned by `fkst.lock`, then runs `scripts/run.sh check` and `scripts/run.sh test`.
 
-This repo does not carry a local `scripts/check_repo.py` copy. Source ratchets
-come from a `ChronoAIProject/fkst-packages` checkout pinned by
-`fkst.lock`:
+## Shared Conformance
+
+This repo does not carry a local `scripts/check_repo.py` copy. Source ratchets come from a `ChronoAIProject/fkst-packages` checkout pinned by `fkst.lock`:
 
 - The fkst-substrate source pin remains `.fkst-substrate-ref`.
-- The fkst-packages platform pin is
-  `fkst.lock` `external_source(id=fkst-packages-platform).resolved.rev`.
+- The fkst-packages platform pin is `fkst.lock` `external_source(id=fkst-packages-platform).resolved.rev`.
 - Host conformance config lives under `.fkst/conformance/`.
-- Host allowlists: `.fkst/conformance/allowlists/`
-- Engine package roots: `.fkst/compose/package-roots`
-- Hydrated checkout: `.fkst/run/fkst-packages-platform/` (ignored)
+- Host allowlists live under `.fkst/conformance/allowlists/`.
+- Engine package roots are listed in `.fkst/compose/package-roots`.
+- The hydrated checkout lives under `.fkst/run/fkst-packages-platform/`, which is ignored by git.
 
-There is no separate per-repo dot-conformance directory and no copied ratchet
-infrastructure in this repo.
+There is no separate per-repo dot-conformance directory and no copied ratchet infrastructure in this repo.
 
-To bump the shared ratchets, update `fkst.workspace.toml`
-`external_source(id=fkst-packages-platform).rev` to the new full
-fkst-packages commit SHA, verify that SHA exists on the intended upstream
-branch, regenerate `fkst.lock` with `fkst-framework deps lock`, remove
-`.fkst/run/fkst-packages-platform/`, then run `scripts/run.sh check` and
-`scripts/run.sh test`.
+To bump the shared ratchets, update `fkst.workspace.toml` `external_source(id=fkst-packages-platform).rev` to the new full `fkst-packages` commit SHA, verify that SHA exists on the intended upstream branch, regenerate `fkst.lock` with `fkst-framework deps lock`, remove `.fkst/run/fkst-packages-platform/`, then run `scripts/run.sh check` and `scripts/run.sh test`.
 
-## 约定
+## Repository Conventions
 
-与 fkst-packages 一致：源文件内部英文、对外产物中文；事件 payload 只带 `source_ref` + 小控制字段（内容不入 payload，consumer 回源 fetch）；site-board 生成物只写入 `FKST_SITE_OUT`（默认 `build/fkst/data`），不写入 hand-authored `site/`；集成/默认分支 `dev`，PR 合并用 squash。
+This repo follows the `fkst-packages` integration model: the default integration branch is `dev`, pull requests are squash-merged, source files use English internally, and external project artifacts are English-first. Event payloads only carry `source_ref` plus small control fields; large content stays out of payloads and consumers fetch it from the source. `site-board` generated artifacts only write under `FKST_SITE_OUT`, which defaults to `build/fkst/data`, and never write to hand-authored `site/`.
 
 ⟦AI:FKST⟧
