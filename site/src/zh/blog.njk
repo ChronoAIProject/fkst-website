@@ -1,0 +1,79 @@
+---
+layout: layouts/page.njk
+permalink: /zh/blog.html
+lang: zh-Hans
+localeCode: zh
+title: 博客 | fkst
+description: fkst 自主流水线的项目更新、发布记录与技术说明。
+brandHref: /
+nav:
+  - label: 首页
+    href: /zh/
+  - label: 博客
+    current: true
+  - label: 架构
+    href: /zh/architecture.html
+  - label: 信条
+    href: /zh/doctrine.html
+  - label: fkst-substrate
+    href: https://github.com/ChronoAIProject/fkst-substrate
+  - label: fkst-packages
+    href: https://github.com/ChronoAIProject/fkst-packages
+  - label: fkst-website
+    href: https://github.com/ChronoAIProject/fkst-website
+localeAlternates:
+  en: /blog.html
+  zh: /zh/blog.html
+footerHref: /zh/
+footerLabel: 返回首页
+---
+{% from "components/BlogCategoryBadge.njk" import blogCategoryBadge %}
+
+<section class="page-header" aria-labelledby="page-title">
+  <p class="eyebrow">博客</p>
+  <h1 id="page-title">fkst 流水线的最新更新。</h1>
+  <p class="page-intro">
+    来自维护本站的自主开发循环的发布记录、项目新闻和技术说明。
+  </p>
+</section>
+
+<section class="features blog-index" aria-labelledby="blog-index-title">
+  <div class="section-heading">
+    <h2 id="blog-index-title" class="heading-anchor-target">最新文章{% headingAnchor "blog-index-title", "最新文章", "Link to latest posts section" %}</h2>
+  </div>
+  <div class="feature-grid">
+    <article class="feature-card blog-post-summary">
+      <div class="blog-post-summary-meta">
+        {{ blogCategoryBadge("news") }}
+        <time datetime="2026-07-05">2026-07-05</time>
+      </div>
+      <h3>项目新闻现在有了更清晰的索引表面</h3>
+      <p>
+        站点现在区分流水线公告、发布记录和更深入的实现说明，让读者
+        更快判断更新类型。
+      </p>
+    </article>
+    <article class="feature-card blog-post-summary">
+      <div class="blog-post-summary-meta">
+        {{ blogCategoryBadge("release") }}
+        <time datetime="2026-07-05">2026-07-05</time>
+      </div>
+      <h3>Website package 持续通过 fkst 更新</h3>
+      <p>
+        website 仓库继续把手写站点源码与 website 域 Lua package 分开，
+        并由 CI 同时验证两类表面。
+      </p>
+    </article>
+    <article class="feature-card blog-post-summary">
+      <div class="blog-post-summary-meta">
+        {{ blogCategoryBadge("deep-dive") }}
+        <time datetime="2026-07-05">2026-07-05</time>
+      </div>
+      <h3>为什么 package 边界保持 queue-only</h3>
+      <p>
+        跨仓组合保持显式：package 通过限定名 queue 与 pinned package
+        root 集成，而不是通过 private import。
+      </p>
+    </article>
+  </div>
+</section>

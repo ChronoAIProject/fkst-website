@@ -235,6 +235,14 @@ def validate_route_parser(route: str, parser: LocaleScaffoldParser, failures: li
             "en": "/fkst-website/architecture.html",
             "zh": "/fkst-website/zh/architecture.html",
         },
+        "/blog.html": {
+            "en": "/fkst-website/blog.html",
+            "zh": "/fkst-website/zh/blog.html",
+        },
+        "/zh/blog.html": {
+            "en": "/fkst-website/blog.html",
+            "zh": "/fkst-website/zh/blog.html",
+        },
         "/doctrine.html": {
             "en": "/fkst-website/doctrine.html",
             "zh": "/fkst-website/zh/doctrine.html",

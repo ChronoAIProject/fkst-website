@@ -14,6 +14,10 @@ ROOT = Path(__file__).resolve().parents[1]
 SITE_DIR = ROOT / "site"
 SOURCE_FIXTURE = SITE_DIR / "src" / "__blog_category_badge_smoke.njk"
 OUTPUT_FIXTURE = SITE_DIR / "_site" / "__blog_category_badge_smoke" / "index.html"
+BLOG_OUTPUTS = (
+    ("English blog index", SITE_DIR / "_site" / "blog.html"),
+    ("Chinese blog index", SITE_DIR / "_site" / "zh" / "blog.html"),
+)
 STYLE_OUTPUT = SITE_DIR / "_site" / "assets" / "css" / "style.css"
 
 
@@ -196,6 +200,20 @@ def assert_badges(parser: BlogCategoryBadgeParser, failures: list[str]) -> None:
         failures.append("unknown category badge should not render a broken icon")
 
 
+def assert_blog_index_badges(
+    label: str,
+    parser: BlogCategoryBadgeParser,
+    failures: list[str],
+) -> None:
+    if len(parser.badges) != 3:
+        failures.append(f"{label}: expected 3 rendered post-summary badges, found {len(parser.badges)}")
+        return
+
+    assert_known_badge(parser.badges[0], "news", "News", "news", failures)
+    assert_known_badge(parser.badges[1], "release", "Release", "release", failures)
+    assert_known_badge(parser.badges[2], "deep-dive", "Deep dive", "deep-dive", failures)
+
+
 def assert_styles(failures: list[str]) -> None:
     if not STYLE_OUTPUT.is_file():
         failures.append(f"missing built stylesheet {STYLE_OUTPUT}")
@@ -235,6 +253,10 @@ def main() -> int:
         parser = parse_html(OUTPUT_FIXTURE, failures)
         if parser:
             assert_badges(parser, failures)
+        for label, path in BLOG_OUTPUTS:
+            parser = parse_html(path, failures)
+            if parser:
+                assert_blog_index_badges(label, parser, failures)
         assert_styles(failures)
 
     if failures:
