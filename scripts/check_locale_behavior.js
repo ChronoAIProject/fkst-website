@@ -16,6 +16,8 @@ const SITE_ORIGIN = "https://chronoaiproject.github.io";
 const STORAGE_KEY = "fkst-locale";
 const siteRequire = createRequire(path.join(SITE_ROOT, "package.json"));
 const { JSDOM } = siteRequire("jsdom");
+const jsdomUtils = siteRequire("jsdom/lib/jsdom/living/generated/utils.js");
+const whatwgUrl = siteRequire("whatwg-url");
 
 const LOCALE_DETAILS = Object.freeze({
   en: Object.freeze({
@@ -275,6 +277,15 @@ function installStorageFaults(window, options) {
   }
 }
 
+function installNavigationRecorder(window) {
+  const navigations = [];
+  const locationImpl = jsdomUtils.implForWrapper(window.location);
+  locationImpl._locationObjectNavigate = (urlRecord) => {
+    navigations.push(whatwgUrl.serializeURL(urlRecord));
+  };
+  return navigations;
+}
+
 function createClientHarness(html, url, options = {}) {
   const errors = [];
   const dom = new JSDOM(html, {
@@ -282,6 +293,7 @@ function createClientHarness(html, url, options = {}) {
     url,
   });
   const { window } = dom;
+  const navigations = installNavigationRecorder(window);
 
   window.addEventListener("error", (event) => {
     errors.push(event.error || event.message);
@@ -304,6 +316,7 @@ function createClientHarness(html, url, options = {}) {
   return {
     document: window.document,
     errors,
+    navigations,
     window,
   };
 }
@@ -363,6 +376,21 @@ function assertClickPersistsBeforeNavigation() {
       `${page.route}: click target inside option should persist target locale`
     );
     assertNoClientErrors(harness.errors, page.route);
+  }
+}
+
+function assertStoredLocaleInitializationRedirects() {
+  for (const page of EXPECTED_PAGES) {
+    const targetLocale = page.current === "en" ? "zh" : "en";
+    const expectedHref = absoluteHref(page.hrefs[targetLocale]);
+    const harness = builtHarnessFor(page, { localStorageValue: targetLocale });
+
+    assert.deepEqual(
+      harness.navigations,
+      [expectedHref],
+      `${page.route}: stored locale must redirect during locale.js initialization`
+    );
+    assertNoClientErrors(harness.errors, `${page.route}: initialization redirect`);
   }
 }
 
@@ -564,6 +592,7 @@ function main() {
   assert.equal(fs.existsSync(SCRIPT_OUTPUT), true, `missing built locale script ${SCRIPT_OUTPUT}`);
   assertBuiltMarkupContracts();
   assertClickPersistsBeforeNavigation();
+  assertStoredLocaleInitializationRedirects();
   assertStoredLocaleRedirects();
   assertRedirectGuards();
   assertInvalidLocaleDataFailsClosed();
