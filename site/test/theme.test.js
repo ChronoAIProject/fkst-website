@@ -45,6 +45,24 @@ function createHarness(options = {}) {
     errors.push(event.reason);
   });
 
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    value(query) {
+      return {
+        addEventListener() {},
+        addListener() {},
+        dispatchEvent() {
+          return false;
+        },
+        matches: Boolean(options.prefersDark) && query === "(prefers-color-scheme: dark)",
+        media: query,
+        onchange: null,
+        removeEventListener() {},
+        removeListener() {}
+      };
+    }
+  });
+
   if (options.localStorageValue !== undefined) {
     window.localStorage.setItem(STORAGE_KEY, options.localStorageValue);
   }
@@ -118,14 +136,14 @@ function click(button, errors) {
   }
 }
 
-test("missing stored preference applies the default light theme", () => {
+test("missing stored preference leaves document theme unset and follows system light", () => {
   const { button, document, errors, window } = createHarness();
 
   assert.equal(window.fkstTheme.readTheme(), "light");
   assertRootTheme(document, {
-    hasDataTheme: true,
-    dataTheme: "light",
-    colorScheme: "light"
+    hasDataTheme: false,
+    dataTheme: null,
+    colorScheme: ""
   });
   assertButtonState(button, {
     ariaChecked: "false",
@@ -136,71 +154,14 @@ test("missing stored preference applies the default light theme", () => {
   assertNoClientErrors(errors);
 });
 
-test("invalid stored preference falls back to the default light theme", () => {
-  const { button, document, errors, window } = createHarness({
-    localStorageValue: "solarized"
-  });
+test("missing stored preference leaves document theme unset and follows system dark", () => {
+  const { button, document, errors, window } = createHarness({ prefersDark: true });
 
-  assert.equal(window.fkstTheme.readTheme(), "light");
-  assert.equal(window.localStorage.getItem(STORAGE_KEY), "solarized");
+  assert.equal(window.fkstTheme.readTheme(), "dark");
   assertRootTheme(document, {
-    hasDataTheme: true,
-    dataTheme: "light",
-    colorScheme: "light"
-  });
-  assertButtonState(button, {
-    ariaChecked: "false",
-    ariaLabel: "Switch to dark theme",
-    dataTheme: "light",
-    disabled: false
-  });
-  assertNoClientErrors(errors);
-});
-
-test("storage read failure falls back to the default light theme without client errors", () => {
-  const { button, document, errors, window } = createHarness({
-    getItemThrows: true
-  });
-
-  assert.equal(window.fkstTheme.readTheme(), "light");
-  assertRootTheme(document, {
-    hasDataTheme: true,
-    dataTheme: "light",
-    colorScheme: "light"
-  });
-  assertButtonState(button, {
-    ariaChecked: "false",
-    ariaLabel: "Switch to dark theme",
-    dataTheme: "light",
-    disabled: false
-  });
-  assertNoClientErrors(errors);
-});
-
-test("unavailable storage falls back to the default light theme without client errors", () => {
-  const { button, document, errors, window } = createHarness({
-    localStorageThrows: true
-  });
-
-  assert.equal(window.fkstTheme.readTheme(), "light");
-  assertRootTheme(document, {
-    hasDataTheme: true,
-    dataTheme: "light",
-    colorScheme: "light"
-  });
-  assertButtonState(button, {
-    ariaChecked: "false",
-    ariaLabel: "Switch to dark theme",
-    dataTheme: "light",
-    disabled: false
-  });
-
-  click(button, errors);
-
-  assertRootTheme(document, {
-    hasDataTheme: true,
-    dataTheme: "dark",
-    colorScheme: "dark"
+    hasDataTheme: false,
+    dataTheme: null,
+    colorScheme: ""
   });
   assertButtonState(button, {
     ariaChecked: "true",
@@ -211,9 +172,88 @@ test("unavailable storage falls back to the default light theme without client e
   assertNoClientErrors(errors);
 });
 
-test("stored light preference restores light on load", () => {
+test("invalid stored preference is not converted into an explicit light override", () => {
   const { button, document, errors, window } = createHarness({
-    localStorageValue: "light"
+    localStorageValue: "solarized",
+    prefersDark: true
+  });
+
+  assert.equal(window.fkstTheme.readTheme(), "dark");
+  assert.equal(window.localStorage.getItem(STORAGE_KEY), "solarized");
+  assertRootTheme(document, {
+    hasDataTheme: false,
+    dataTheme: null,
+    colorScheme: ""
+  });
+  assertButtonState(button, {
+    ariaChecked: "true",
+    ariaLabel: "Switch to light theme",
+    dataTheme: "dark",
+    disabled: false
+  });
+  assertNoClientErrors(errors);
+});
+
+test("storage read failure falls back to system preference without a document override", () => {
+  const { button, document, errors, window } = createHarness({
+    getItemThrows: true,
+    prefersDark: true
+  });
+
+  assert.equal(window.fkstTheme.readTheme(), "dark");
+  assertRootTheme(document, {
+    hasDataTheme: false,
+    dataTheme: null,
+    colorScheme: ""
+  });
+  assertButtonState(button, {
+    ariaChecked: "true",
+    ariaLabel: "Switch to light theme",
+    dataTheme: "dark",
+    disabled: false
+  });
+  assertNoClientErrors(errors);
+});
+
+test("unavailable storage falls back to system preference without client errors", () => {
+  const { button, document, errors, window } = createHarness({
+    localStorageThrows: true,
+    prefersDark: true
+  });
+
+  assert.equal(window.fkstTheme.readTheme(), "dark");
+  assertRootTheme(document, {
+    hasDataTheme: false,
+    dataTheme: null,
+    colorScheme: ""
+  });
+  assertButtonState(button, {
+    ariaChecked: "true",
+    ariaLabel: "Switch to light theme",
+    dataTheme: "dark",
+    disabled: false
+  });
+
+  click(button, errors);
+
+  assertRootTheme(document, {
+    hasDataTheme: true,
+    dataTheme: "light",
+    colorScheme: "light"
+  });
+  assertButtonState(button, {
+    ariaChecked: "false",
+    ariaLabel: "Switch to dark theme",
+    dataTheme: "light",
+    disabled: false
+  });
+  assertNoClientErrors(errors);
+});
+
+test("stored light preference overrides system dark", () => {
+  const { button, document, errors, window } = createHarness({
+    localStorageValue: "light",
+    prefersDark: true
   });
 
   assert.equal(window.fkstTheme.readTheme(), "light");
@@ -231,7 +271,7 @@ test("stored light preference restores light on load", () => {
   assertNoClientErrors(errors);
 });
 
-test("stored dark preference restores dark on load", () => {
+test("stored dark preference overrides system light", () => {
   const { button, document, errors, window } = createHarness({
     localStorageValue: "dark"
   });

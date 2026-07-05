@@ -7,6 +7,13 @@
   const isSupportedTheme = (value) => supportedThemes.includes(value);
   const resolveTheme = (value) => (isSupportedTheme(value) ? value : defaultTheme);
   const nextTheme = (value) => (resolveTheme(value) === "dark" ? "light" : "dark");
+  const systemTheme = () => {
+    try {
+      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : defaultTheme;
+    } catch (_error) {
+      return defaultTheme;
+    }
+  };
 
   const storage = () => {
     try {
@@ -30,7 +37,7 @@
     }
   };
 
-  const readTheme = () => readStoredTheme() || defaultTheme;
+  const readTheme = () => readStoredTheme() || systemTheme();
 
   const updateToggle = (button, theme) => {
     if (!button) {
@@ -51,6 +58,16 @@
     const theme = resolveTheme(value);
     document.documentElement.setAttribute(themeAttribute, theme);
     document.documentElement.style.colorScheme = theme;
+    document.querySelectorAll(toggleSelector).forEach((button) => {
+      updateToggle(button, theme);
+    });
+    return theme;
+  };
+
+  const clearThemeOverride = () => {
+    const theme = readTheme();
+    document.documentElement.removeAttribute(themeAttribute);
+    document.documentElement.style.colorScheme = "";
     document.querySelectorAll(toggleSelector).forEach((button) => {
       updateToggle(button, theme);
     });
@@ -83,7 +100,8 @@
 
   const initThemeToggle = () => {
     const buttons = document.querySelectorAll(toggleSelector);
-    const theme = applyTheme(readTheme());
+    const storedTheme = readStoredTheme();
+    const theme = storedTheme ? applyTheme(storedTheme) : clearThemeOverride();
     buttons.forEach((button) => {
       button.addEventListener("click", () => {
         setTheme(nextTheme(activeTheme()));

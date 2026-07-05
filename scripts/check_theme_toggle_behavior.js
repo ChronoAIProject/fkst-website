@@ -78,6 +78,8 @@ function testStylesheetExposesExplicitThemeHooks() {
   const requiredNeedles = [
     '[data-theme="dark"]',
     '[data-theme="light"]',
+    ':root:not([data-theme="light"])',
+    'prefers-color-scheme',
     '.theme-toggle-button[aria-checked="true"] .theme-toggle-knob',
     'transform: translateX(20px)'
   ];
@@ -85,11 +87,6 @@ function testStylesheetExposesExplicitThemeHooks() {
   for (const needle of requiredNeedles) {
     assert.ok(style.includes(needle), `stylesheet missing theme contract: ${needle}`);
   }
-  assert.equal(
-    style.includes("prefers-color-scheme"),
-    false,
-    "stylesheet must not add system-theme detection for the manual toggle"
-  );
 }
 
 function main() {
