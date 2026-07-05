@@ -100,46 +100,269 @@ function parsePrintRules(cssText) {
 }
 
 function selectorParts(selectorText) {
-  return selectorText.split(",").map((selector) => selector.trim()).filter(Boolean);
+  const selectors = [];
+  let start = 0;
+  let bracketDepth = 0;
+  let parenDepth = 0;
+  let quote = null;
+
+  for (let index = 0; index < selectorText.length; index += 1) {
+    const char = selectorText[index];
+    const previous = selectorText[index - 1];
+
+    if (quote !== null) {
+      if (char === quote && previous !== "\\") {
+        quote = null;
+      }
+      continue;
+    }
+
+    if (char === "\"" || char === "'") {
+      quote = char;
+      continue;
+    }
+
+    if (char === "[") {
+      bracketDepth += 1;
+      continue;
+    }
+    if (char === "]") {
+      bracketDepth -= 1;
+      continue;
+    }
+    if (char === "(") {
+      parenDepth += 1;
+      continue;
+    }
+    if (char === ")") {
+      parenDepth -= 1;
+      continue;
+    }
+    if (char === "," && bracketDepth === 0 && parenDepth === 0) {
+      selectors.push(selectorText.slice(start, index).trim());
+      start = index + 1;
+    }
+  }
+
+  selectors.push(selectorText.slice(start).trim());
+  return selectors.filter(Boolean);
+}
+
+function addSpecificity(left, right) {
+  return [
+    left[0] + right[0],
+    left[1] + right[1],
+    left[2] + right[2]
+  ];
+}
+
+function compareSpecificity(left, right) {
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) {
+      return left[index] - right[index];
+    }
+  }
+  return 0;
+}
+
+function maxSpecificity(left, right) {
+  return compareSpecificity(left, right) >= 0 ? left : right;
+}
+
+function consumeIdentifier(text, start) {
+  let index = start;
+  while (index < text.length && /[A-Za-z0-9_-]/.test(text[index])) {
+    index += 1;
+  }
+  return index;
+}
+
+function consumeBalanced(text, start, openChar, closeChar) {
+  let depth = 0;
+  let quote = null;
+
+  for (let index = start; index < text.length; index += 1) {
+    const char = text[index];
+    const previous = text[index - 1];
+
+    if (quote !== null) {
+      if (char === quote && previous !== "\\") {
+        quote = null;
+      }
+      continue;
+    }
+
+    if (char === "\"" || char === "'") {
+      quote = char;
+      continue;
+    }
+
+    if (char === openChar) {
+      depth += 1;
+      continue;
+    }
+
+    if (char === closeChar) {
+      depth -= 1;
+      if (depth === 0) {
+        return index + 1;
+      }
+    }
+  }
+
+  return text.length;
+}
+
+function selectorListSpecificity(selectorText) {
+  return selectorParts(selectorText)
+    .map((selector) => selectorSpecificity(selector))
+    .reduce(maxSpecificity, [0, 0, 0]);
+}
+
+function selectorSpecificity(selector) {
+  let specificity = [0, 0, 0];
+
+  for (let index = 0; index < selector.length;) {
+    const char = selector[index];
+
+    if (char === "#") {
+      specificity[0] += 1;
+      index = consumeIdentifier(selector, index + 1);
+      continue;
+    }
+
+    if (char === ".") {
+      specificity[1] += 1;
+      index = consumeIdentifier(selector, index + 1);
+      continue;
+    }
+
+    if (char === "[") {
+      specificity[1] += 1;
+      index = consumeBalanced(selector, index, "[", "]");
+      continue;
+    }
+
+    if (char === ":") {
+      if (selector[index + 1] === ":") {
+        specificity[2] += 1;
+        index = consumeIdentifier(selector, index + 2);
+        continue;
+      }
+
+      const nameStart = index + 1;
+      const nameEnd = consumeIdentifier(selector, nameStart);
+      const pseudoName = selector.slice(nameStart, nameEnd).toLowerCase();
+
+      if (selector[nameEnd] === "(") {
+        const argsEnd = consumeBalanced(selector, nameEnd, "(", ")");
+        const args = selector.slice(nameEnd + 1, argsEnd - 1);
+        if (pseudoName === "not" || pseudoName === "is" || pseudoName === "has") {
+          specificity = addSpecificity(specificity, selectorListSpecificity(args));
+        } else if (pseudoName !== "where") {
+          specificity[1] += 1;
+        }
+        index = argsEnd;
+        continue;
+      }
+
+      specificity[1] += 1;
+      index = nameEnd;
+      continue;
+    }
+
+    if (/[A-Za-z_-]/.test(char)) {
+      specificity[2] += 1;
+      index = consumeIdentifier(selector, index + 1);
+      continue;
+    }
+
+    index += 1;
+  }
+
+  return specificity;
+}
+
+function splitPseudoElement(selector) {
+  const match = selector.match(/::[A-Za-z0-9_-]+$/);
+  if (!match) {
+    return { baseSelector: selector, pseudoElement: null };
+  }
+  return {
+    baseSelector: selector.slice(0, match.index),
+    pseudoElement: match[0]
+  };
 }
 
 function matchesSelector(element, selector) {
-  const pseudoElementIndex = selector.indexOf("::");
-  const elementSelector = pseudoElementIndex === -1
-    ? selector
-    : selector.slice(0, pseudoElementIndex);
-  if (!elementSelector) {
+  const { baseSelector } = splitPseudoElement(selector);
+  if (!baseSelector) {
     return false;
   }
-  return element.matches(elementSelector);
+  return element.matches(baseSelector);
 }
 
-function matchesRule(element, rule, pseudoElement = null) {
-  return selectorParts(rule.selectorText).some((selector) => {
-    if (pseudoElement === null && selector.includes("::")) {
-      return false;
+function matchingRuleSpecificity(element, rule, pseudoElement = null) {
+  let specificity = null;
+
+  for (const selector of selectorParts(rule.selectorText)) {
+    const selectorPseudo = splitPseudoElement(selector).pseudoElement;
+    if (pseudoElement === null && selectorPseudo !== null) {
+      continue;
     }
-    if (pseudoElement !== null && !selector.endsWith(pseudoElement)) {
-      return false;
+    if (pseudoElement !== null && selectorPseudo !== pseudoElement) {
+      continue;
     }
-    return matchesSelector(element, selector);
-  });
+    if (!matchesSelector(element, selector)) {
+      continue;
+    }
+    const selectorScore = selectorSpecificity(selector);
+    specificity = specificity === null
+      ? selectorScore
+      : maxSpecificity(specificity, selectorScore);
+  }
+
+  return specificity;
+}
+
+function shouldApplyDeclaration(current, candidate) {
+  if (current === undefined) {
+    return true;
+  }
+
+  if (current.priority !== candidate.priority) {
+    return candidate.priority === "important";
+  }
+
+  const specificityComparison = compareSpecificity(candidate.specificity, current.specificity);
+  if (specificityComparison !== 0) {
+    return specificityComparison > 0;
+  }
+
+  return candidate.sourceOrder >= current.sourceOrder;
 }
 
 function declarationsFor(element, rules, pseudoElement = null) {
   const declarations = new Map();
 
-  for (const rule of rules) {
-    if (!matchesRule(element, rule, pseudoElement)) {
+  for (let sourceOrder = 0; sourceOrder < rules.length; sourceOrder += 1) {
+    const rule = rules[sourceOrder];
+    const specificity = matchingRuleSpecificity(element, rule, pseudoElement);
+    if (specificity === null) {
       continue;
     }
 
     for (let index = 0; index < rule.style.length; index += 1) {
       const property = rule.style[index];
-      declarations.set(property, {
+      const candidate = {
         priority: rule.style.getPropertyPriority(property),
+        sourceOrder,
+        specificity,
         value: rule.style.getPropertyValue(property).trim()
-      });
+      };
+      if (shouldApplyDeclaration(declarations.get(property), candidate)) {
+        declarations.set(property, candidate);
+      }
     }
   }
 
