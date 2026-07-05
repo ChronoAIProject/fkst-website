@@ -17,6 +17,9 @@ const SCAFFOLD_PATH = path.join(
   "DocsSidebarShortcutScaffold.njk"
 );
 const ARTICLE_LAYOUT_PATH = path.join(SITE_ROOT, "src", "_includes", "layouts", "article.njk");
+const ARTICLE_SHELL_PATH = path.join(SITE_ROOT, "src", "_includes", "components", "ArticleShell.njk");
+const ARTICLE_CONTENT_PATH = path.join(SITE_ROOT, "src", "_includes", "components", "ArticleContent.njk");
+const ARTICLE_SCRIPTS_PATH = path.join(SITE_ROOT, "src", "_includes", "components", "ArticleScripts.njk");
 const SCRIPT_PATH = path.join(SITE_ROOT, "src", "assets", "js", "docs-sidebar.js");
 const SOURCE_ROOT = path.join(SITE_ROOT, "src");
 const KEYBOARD_SHORTCUTS = require("../src/_data/keyboardShortcuts");
@@ -46,6 +49,9 @@ function siteSourceFiles() {
 
 test("article pages own the docs sidebar at the article shell boundary", () => {
   const articleLayout = readUtf8(ARTICLE_LAYOUT_PATH);
+  const articleShell = readUtf8(ARTICLE_SHELL_PATH);
+  const articleContent = readUtf8(ARTICLE_CONTENT_PATH);
+  const articleScripts = readUtf8(ARTICLE_SCRIPTS_PATH);
   const component = readUtf8(COMPONENT_PATH);
   const articlePages = siteSourceFiles().filter((filePath) => {
     if (filePath.includes(`${path.sep}_includes${path.sep}`)) {
@@ -64,10 +70,11 @@ test("article pages own the docs sidebar at the article shell boundary", () => {
     ]
   );
   assert.equal(fs.existsSync(SCAFFOLD_PATH), false);
-  assert.match(articleLayout, /components\/DocsSidebar\.njk/);
-  assert.match(articleLayout, /data-docs-sidebar-shell/);
-  assert.match(articleLayout, /data-docs-sidebar-content/);
-  assert.match(articleLayout, /data-docs-sidebar-script/);
+  assert.match(articleLayout, /components\/ArticleShell\.njk/);
+  assert.match(articleShell, /components\/DocsSidebar\.njk/);
+  assert.match(articleShell, /data-docs-sidebar-shell/);
+  assert.match(articleContent, /data-docs-sidebar-content/);
+  assert.match(articleScripts, /data-docs-sidebar-script/);
   assert.match(component, /<aside[\s\S]*data-docs-sidebar/);
   assert.match(component, /aria-controls="docs-sidebar-panel"/);
   assert.match(component, /aria-expanded="true"/);

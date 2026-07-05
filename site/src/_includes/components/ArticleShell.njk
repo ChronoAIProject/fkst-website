@@ -1,0 +1,16 @@
+<div
+  class="article-shell"
+  data-article-shell
+  data-docs-sidebar-shell
+  {% if hasDocsTocEntries %}
+    data-docs-sidebar-open
+  {% else %}
+    data-docs-sidebar-state="closed"
+    data-docs-sidebar-empty
+  {% endif %}
+>
+  {% if hasDocsTocEntries %}
+    {% include "components/DocsSidebar.njk" %}
+  {% endif %}
+  {% include "components/ArticleContent.njk" %}
+</div>
