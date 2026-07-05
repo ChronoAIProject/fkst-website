@@ -116,5 +116,3 @@ This placement is separate from the current article table-of-contents sidebar
 implemented by `site/src/_includes/components/DocsSidebar.njk`. The icons
 belong to docs section navigation, not to per-page heading links under "On this
 page".
-
-⟦AI:FKST⟧
