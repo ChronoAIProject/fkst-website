@@ -100,7 +100,6 @@ def build_fixtures() -> subprocess.CompletedProcess[str]:
             localeCode: en
             localeAlternates:
               en: /__external_link_smoke/
-              zh-CN: https://example.com/language
             footerHref: https://example.com/footer
             footerLabel: External footer
             ---
@@ -135,7 +134,7 @@ def build_fixtures() -> subprocess.CompletedProcess[str]:
             localeCode: en
             localeAlternates:
               en: /__external_link_internal_footer/
-              zh-CN: /zh/
+              zh: /zh/
             footerHref: /architecture.html
             footerLabel: Internal footer
             ---
@@ -234,7 +233,6 @@ def assert_fixture_markup(parser: ExternalLinkParser, failures: list[str]) -> No
     for href, context in (
         ("https://example.com/nav", "fixture nav external link"),
         ("//example.com/protocol-nav", "fixture nav protocol-relative external link"),
-        ("https://example.com/language", "fixture language external link"),
         ("https://example.com/footer", "fixture footer external link"),
         ("https://example.com/docs", "fixture Markdown HTTPS external link"),
         ("http://example.org/docs", "fixture Markdown HTTP external link"),
@@ -269,7 +267,6 @@ def assert_fixture_markup(parser: ExternalLinkParser, failures: list[str]) -> No
 def assert_internal_footer_fixture(parser: ExternalLinkParser, failures: list[str]) -> None:
     for href, context in (
         ("/fkst-website/doctrine.html", "internal footer fixture nav url-filtered link"),
-        ("/fkst-website/zh/", "internal footer fixture language url-filtered link"),
         ("/fkst-website/architecture.html", "internal footer fixture footer url-filtered link"),
     ):
         assert_exact_unmarked_href(parser, href, context, failures)

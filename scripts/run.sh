@@ -109,6 +109,7 @@ site_build_and_smoke() {
   node "$ROOT/site/test/headingAnchors.test.js"
   node "$ROOT/site/test/docsToc.test.js"
   node "$ROOT/site/test/shortcutActions.test.js"
+  (cd "$ROOT/site" && node test/locale.test.js)
   (cd "$ROOT/site" && node test/theme.test.js)
   (cd "$ROOT/site" && npm run build)
   python3 -B "$ROOT/scripts/check_docs_toc.py"
@@ -124,7 +125,6 @@ site_build_and_smoke() {
   python3 -B "$ROOT/scripts/check_print_page_button.py"
   python3 -B "$ROOT/scripts/check_external_links.py"
   python3 -B "$ROOT/scripts/check_locale_scaffold.py"
-  python3 -B "$ROOT/scripts/check_locale_switcher_behavior.py"
   node "$ROOT/scripts/check_theme_toggle_behavior.js"
   python3 -B "$ROOT/scripts/check_keyboard_shortcuts.py"
   python3 -B "$ROOT/scripts/check_article_scroll_progress.py"

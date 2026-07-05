@@ -26,7 +26,6 @@ function fixtureMarkup() {
       <a id="header-chrome-link" href="https://example.invalid/header">Brand</a>
       <nav class="top-nav"><a id="nav-chrome-link" href="https://example.invalid/nav">Docs</a></nav>
       <div class="header-actions">
-        <nav class="language-switch"><a href="/zh/">Chinese</a></nav>
         <span class="theme-toggle-control"><button type="button">Theme</button></span>
         <span class="print-page-control"><button type="button">Print</button></span>
       </div>
@@ -415,7 +414,6 @@ function assertHiddenChrome(document, rules) {
     ".site-header",
     ".top-nav",
     ".header-actions",
-    ".language-switch",
     ".theme-toggle-control",
     ".print-page-control",
     ".site-footer",
