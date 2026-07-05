@@ -7,7 +7,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 import subprocess
 import textwrap
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -16,8 +16,15 @@ SITE_DIR = SITE_ROOT / "_site"
 STYLE_OUTPUT = SITE_DIR / "assets" / "css" / "style.css"
 NO_TOC_SOURCE_FIXTURE = SITE_ROOT / "src" / "__docs_toc_no_entries.njk"
 NESTED_SOURCE_FIXTURE = SITE_ROOT / "src" / "__docs_toc_nested.njk"
+MISSING_ANCHOR_SOURCE_FIXTURE = SITE_ROOT / "src" / "__docs_toc_missing_anchor.njk"
+SOURCE_FIXTURES = (
+    NO_TOC_SOURCE_FIXTURE,
+    NESTED_SOURCE_FIXTURE,
+    MISSING_ANCHOR_SOURCE_FIXTURE,
+)
 NO_TOC_OUTPUT_FIXTURE = SITE_DIR / "__docs_toc_no_entries" / "index.html"
 NESTED_OUTPUT_FIXTURE = SITE_DIR / "__docs_toc_nested" / "index.html"
+MISSING_ANCHOR_OUTPUT_FIXTURE = SITE_DIR / "__docs_toc_missing_anchor" / "index.html"
 ARTICLE_ROUTES = (
     "/architecture.html",
     "/doctrine.html",
@@ -40,6 +47,8 @@ class DocsTocParser(HTMLParser):
         self.current_heading: dict[str, str] | None = None
         self.heading_anchor_depth = 0
         self.headings: list[dict[str, str]] = []
+        self.canonical_headings: list[dict[str, str]] = []
+        self.missing_anchor_headings: list[dict[str, str]] = []
         self.current_toc_entry: dict[str, str] | None = None
         self.current_toc_link = False
         self.toc_entries: list[dict[str, str]] = []
@@ -61,6 +70,7 @@ class DocsTocParser(HTMLParser):
         if self.content_depth and tag in ("h2", "h3") and attr.get("id"):
             self.current_heading = {"id": attr["id"], "level": str({"h2": 2, "h3": 3}[tag]), "text": ""}
         if self.current_heading is not None and "data-heading-anchor" in attr:
+            self.current_heading["has_anchor"] = "true"
             self.heading_anchor_depth += 1
 
         if tag == "li" and "data-docs-toc-entry" in attr:
@@ -81,6 +91,10 @@ class DocsTocParser(HTMLParser):
             self.current_heading["text"] = " ".join(self.current_heading["text"].split())
             if self.current_heading["text"]:
                 self.headings.append(self.current_heading)
+                if self.current_heading.get("has_anchor") == "true":
+                    self.canonical_headings.append(self.current_heading)
+                else:
+                    self.missing_anchor_headings.append(self.current_heading)
             self.current_heading = None
             self.heading_anchor_depth = 0
         if self.current_toc_entry is not None and tag == "a":
@@ -121,8 +135,26 @@ def expected_href(heading_id: str) -> str:
     return f"#{quote(heading_id, safe='')}"
 
 
+def decoded_fragment(href: str) -> str:
+    if not href.startswith("#"):
+        return ""
+    return unquote(href[1:])
+
+
 def compact(text: str) -> str:
     return " ".join(text.split())
+
+
+def check_toc_links_resolve_once(parser: DocsTocParser, route: str, failures: list[str]) -> None:
+    heading_ids = [heading["id"] for heading in parser.headings]
+    for index, entry in enumerate(parser.toc_entries, start=1):
+        fragment = decoded_fragment(entry["href"])
+        matches = [heading_id for heading_id in heading_ids if heading_id == fragment]
+        if len(matches) != 1:
+            failures.append(
+                f"{route}: TOC entry {index} href {entry['href']!r} resolves to "
+                f"{len(matches)} article heading IDs after decoding"
+            )
 
 
 def check_article_route(route: str, failures: list[str]) -> None:
@@ -160,6 +192,7 @@ def check_article_route(route: str, failures: list[str]) -> None:
                 f"{route}: TOC entry {index} expected level/depth {heading['level']}, found "
                 f"{entry['level']!r}/{entry['depth']!r}"
             )
+    check_toc_links_resolve_once(parser, route, failures)
 
 
 def check_non_article_route(route: str, failures: list[str]) -> None:
@@ -233,6 +266,35 @@ def build_fixtures() -> subprocess.CompletedProcess[str]:
         ),
         encoding="utf-8",
     )
+    MISSING_ANCHOR_SOURCE_FIXTURE.write_text(
+        textwrap.dedent(
+            """\
+            ---
+            layout: layouts/article.njk
+            permalink: /__docs_toc_missing_anchor/
+            lang: en
+            localeCode: en
+            title: Docs TOC Missing Anchor | fkst
+            description: "Smoke fixture for article headings without canonical heading-anchor metadata."
+            articleTitle: Docs TOC missing anchor fixture
+            brandHref: /
+            nav: []
+            footerText: Docs TOC missing anchor fixture
+            ---
+            <section class="content-section" aria-labelledby="canonical">
+              <h2 id="canonical" class="heading-anchor-target">Canonical{% headingAnchor "canonical", "Canonical", "Link to Canonical" %}</h2>
+            </section>
+            <section class="content-section" aria-labelledby="manual-heading">
+              <h2 id="manual-heading" class="heading-anchor-target">Manual heading</h2>
+              <p>This heading has an ID but no canonical heading-anchor shortcode.</p>
+            </section>
+            <section class="content-section" aria-labelledby="canonical-detail">
+              <h3 id="canonical-detail" class="heading-anchor-target">Canonical detail{% headingAnchor "canonical-detail", "Canonical detail", "Link to Canonical detail", 3 %}</h3>
+            </section>
+            """
+        ),
+        encoding="utf-8",
+    )
     try:
         return subprocess.run(
             ["npm", "run", "build"],
@@ -243,8 +305,59 @@ def build_fixtures() -> subprocess.CompletedProcess[str]:
             stderr=subprocess.PIPE,
         )
     finally:
-        NO_TOC_SOURCE_FIXTURE.unlink(missing_ok=True)
-        NESTED_SOURCE_FIXTURE.unlink(missing_ok=True)
+        for fixture in SOURCE_FIXTURES:
+            fixture.unlink(missing_ok=True)
+
+
+def check_fixture_sources_removed(failures: list[str]) -> None:
+    for fixture in SOURCE_FIXTURES:
+        if fixture.exists():
+            failures.append(f"fixture source was not removed after build: {fixture}")
+
+
+def check_fixture_outputs_are_ignored(failures: list[str]) -> None:
+    result = subprocess.run(
+        ["git", "check-ignore", "-q", str(SITE_DIR)],
+        cwd=ROOT,
+        check=False,
+    )
+    if result.returncode != 0:
+        failures.append(f"fixture output root is not ignored by git: {SITE_DIR}")
+
+
+def fixture_output_snapshot() -> dict[str, str]:
+    outputs = (
+        NO_TOC_OUTPUT_FIXTURE,
+        NESTED_OUTPUT_FIXTURE,
+        MISSING_ANCHOR_OUTPUT_FIXTURE,
+    )
+    return {
+        str(output.relative_to(SITE_DIR)): output.read_text(encoding="utf-8")
+        for output in outputs
+        if output.is_file()
+    }
+
+
+def check_repeated_build_determinism(
+    first_snapshot: dict[str, str],
+    second_snapshot: dict[str, str],
+    failures: list[str],
+) -> None:
+    if first_snapshot != second_snapshot:
+        failures.append("fixture outputs changed between repeated docs TOC fixture builds")
+
+
+def check_docs_toc_style_scope(style: str, failures: list[str]) -> None:
+    for block in style.split("}"):
+        if "{" not in block:
+            continue
+        selectors, _declarations = block.split("{", 1)
+        if "data-docs-toc" not in selectors and "aria-current=\"location\"" not in selectors:
+            continue
+        for selector in selectors.split(","):
+            normalized = selector.strip()
+            if ".docs-sidebar" not in normalized and ".docs-sidebar-list" not in normalized:
+                failures.append(f"stylesheet docs TOC selector is not sidebar-scoped: {normalized}")
 
 
 def check_no_toc_fixture(failures: list[str]) -> None:
@@ -276,6 +389,31 @@ def check_nested_fixture(failures: list[str]) -> None:
     ]
     if parser.toc_entries != expected:
         failures.append(f"nested fixture: TOC mismatch: expected {expected!r}, found {parser.toc_entries!r}")
+    check_toc_links_resolve_once(parser, "nested fixture", failures)
+
+
+def check_missing_anchor_fixture(failures: list[str]) -> None:
+    parser = DocsTocParser()
+    if not MISSING_ANCHOR_OUTPUT_FIXTURE.is_file():
+        failures.append(f"missing-anchor fixture: missing built file {MISSING_ANCHOR_OUTPUT_FIXTURE}")
+        return
+
+    parser.feed(MISSING_ANCHOR_OUTPUT_FIXTURE.read_text(encoding="utf-8"))
+    expected = [
+        {"href": "#canonical", "text": "Canonical", "level": "2", "depth": "2"},
+        {"href": "#canonical-detail", "text": "Canonical detail", "level": "3", "depth": "3"},
+    ]
+    if parser.toc_entries != expected:
+        failures.append(
+            f"missing-anchor fixture: TOC mismatch: expected {expected!r}, found {parser.toc_entries!r}"
+        )
+    if [heading["id"] for heading in parser.missing_anchor_headings] != ["manual-heading"]:
+        failures.append(
+            "missing-anchor fixture: expected manual-heading to be parsed as a non-canonical article heading"
+        )
+    if any(decoded_fragment(entry["href"]) == "manual-heading" for entry in parser.toc_entries):
+        failures.append("missing-anchor fixture: emitted TOC entry for non-canonical manual-heading")
+    check_toc_links_resolve_once(parser, "missing-anchor fixture", failures)
 
 
 def check_stylesheet(failures: list[str]) -> None:
@@ -285,6 +423,8 @@ def check_stylesheet(failures: list[str]) -> None:
 
     style = compact(STYLE_OUTPUT.read_text(encoding="utf-8"))
     for needle in (
+        ".external-link-marker::before, .external-link-marker::after { content: \"\"; position: absolute; }",
+        ".external-link-marker::before {",
         ".docs-sidebar {",
         "position: sticky;",
         ".docs-sidebar-list [data-docs-toc-depth=\"3\"]",
@@ -295,6 +435,7 @@ def check_stylesheet(failures: list[str]) -> None:
     ):
         if needle not in style:
             failures.append(f"stylesheet missing docs TOC contract: {needle}")
+    check_docs_toc_style_scope(style, failures)
 
 
 def main() -> int:
@@ -304,6 +445,17 @@ def main() -> int:
         print(result.stdout, end="")
         print(result.stderr, end="")
         return result.returncode
+    check_fixture_sources_removed(failures)
+    check_fixture_outputs_are_ignored(failures)
+    first_snapshot = fixture_output_snapshot()
+
+    second_result = build_fixtures()
+    if second_result.returncode != 0:
+        print(second_result.stdout, end="")
+        print(second_result.stderr, end="")
+        return second_result.returncode
+    check_fixture_sources_removed(failures)
+    check_repeated_build_determinism(first_snapshot, fixture_output_snapshot(), failures)
 
     for route in ARTICLE_ROUTES:
         check_article_route(route, failures)
@@ -311,6 +463,7 @@ def main() -> int:
         check_non_article_route(route, failures)
     check_no_toc_fixture(failures)
     check_nested_fixture(failures)
+    check_missing_anchor_fixture(failures)
     check_stylesheet(failures)
 
     if failures:
@@ -320,7 +473,7 @@ def main() -> int:
 
     print(
         "fkst-website dept=site tag=ok DOCS_TOC "
-        f"articles={len(ARTICLE_ROUTES)} non_articles={len(NON_ARTICLE_ROUTES)} fixtures=2"
+        f"articles={len(ARTICLE_ROUTES)} non_articles={len(NON_ARTICLE_ROUTES)} fixtures=3"
     )
     return 0
 
