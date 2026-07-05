@@ -13,6 +13,8 @@ ROOT = Path(__file__).resolve().parents[1]
 SITE_DIR = ROOT / "site"
 SOURCE_FIXTURE = SITE_DIR / "src" / "__code_block_copy_smoke.md"
 OUTPUT_FIXTURE = SITE_DIR / "_site" / "__code_block_copy_smoke" / "index.html"
+BLOG_SOURCE_FIXTURE = SITE_DIR / "src" / "__blog_code_block_copy_smoke.md"
+BLOG_OUTPUT_FIXTURE = SITE_DIR / "_site" / "blog" / "__code_block_copy_smoke" / "index.html"
 SCRIPT_OUTPUT = SITE_DIR / "_site" / "assets" / "js" / "code-block-copy.js"
 STYLE_OUTPUT = SITE_DIR / "_site" / "assets" / "css" / "style.css"
 
@@ -26,6 +28,8 @@ class CodeBlockCopyParser(HTMLParser):
         self.hidden_buttons = 0
         self.status_count = 0
         self.script_present = False
+        self.article_shell_count = 0
+        self.article_content_count = 0
         self._in_wrapper = 0
         self._in_button = False
         self._in_status = False
@@ -47,6 +51,10 @@ class CodeBlockCopyParser(HTMLParser):
             self.wrapper_language.append(attr.get("data-code-block-copy-language", ""))
             self.wrapper_info.append(attr.get("data-code-block-copy-info", ""))
             self.wrapper_kind.append(attr.get("data-code-block-copy-kind", ""))
+        if tag == "div" and "data-article-shell" in attr:
+            self.article_shell_count += 1
+        if tag == "div" and "data-article-scroll-content" in attr:
+            self.article_content_count += 1
         if self._in_wrapper and tag == "button" and "data-code-block-copy-button" in attr:
             self.button_count += 1
             self._in_button = True
@@ -105,6 +113,33 @@ def build_fixture() -> subprocess.CompletedProcess[str]:
         ),
         encoding="utf-8",
     )
+    BLOG_SOURCE_FIXTURE.write_text(
+        textwrap.dedent(
+            """\
+            ---
+            layout: layouts/article.njk
+            permalink: /blog/__code_block_copy_smoke/
+            lang: en
+            localeCode: en
+            title: Blog Code Block Copy Smoke | fkst
+            description: "Smoke fixture for blog code snippet copy controls."
+            articleEyebrow: Blog smoke
+            articleTitle: Blog snippet copy scaffold
+            articleIntro: "Fixture article for blog code snippet copy controls."
+            brandHref: /
+            nav: []
+            footerText: Smoke fixture
+            ---
+
+            The snippet below exercises the article/blog rendering path.
+
+            ```js
+            console.log("blog copy scaffold");
+            ```
+            """
+        ),
+        encoding="utf-8",
+    )
     try:
         return subprocess.run(
             ["npm", "run", "build"],
@@ -116,6 +151,16 @@ def build_fixture() -> subprocess.CompletedProcess[str]:
         )
     finally:
         SOURCE_FIXTURE.unlink(missing_ok=True)
+        BLOG_SOURCE_FIXTURE.unlink(missing_ok=True)
+
+
+def parse_output(path: Path, failures: list[str]) -> CodeBlockCopyParser | None:
+    if not path.is_file():
+        failures.append(f"missing fixture output {path}")
+        return None
+    parser = CodeBlockCopyParser()
+    parser.feed(path.read_text(encoding="utf-8"))
+    return parser
 
 
 def main() -> int:
@@ -126,11 +171,8 @@ def main() -> int:
         print(result.stderr, end="")
         return result.returncode
 
-    if not OUTPUT_FIXTURE.is_file():
-        failures.append(f"missing fixture output {OUTPUT_FIXTURE}")
-    else:
-        parser = CodeBlockCopyParser()
-        parser.feed(OUTPUT_FIXTURE.read_text(encoding="utf-8"))
+    parser = parse_output(OUTPUT_FIXTURE, failures)
+    if parser:
         if parser.wrapper_count != 2:
             failures.append(f"expected 2 code-block wrappers, found {parser.wrapper_count}")
         if parser.button_count != 2:
@@ -158,6 +200,35 @@ def main() -> int:
             failures.append("code-block copy source contract does not expose info metadata")
         if parser.wrapper_kind != ["fence", "code_block"]:
             failures.append("code-block copy source contract does not expose block kind metadata")
+
+    blog_parser = parse_output(BLOG_OUTPUT_FIXTURE, failures)
+    if blog_parser:
+        if blog_parser.article_shell_count != 1 or blog_parser.article_content_count != 1:
+            failures.append("blog smoke fixture did not render through the article content path")
+        if blog_parser.wrapper_count != 1:
+            failures.append(f"expected 1 blog code-block wrapper, found {blog_parser.wrapper_count}")
+        if blog_parser.button_count != 1:
+            failures.append(f"expected 1 blog code-block copy button, found {blog_parser.button_count}")
+        if blog_parser.disabled_buttons != 1 or blog_parser.hidden_buttons != 1:
+            failures.append("blog copy button scaffold should render inert and hidden before activation")
+        if blog_parser.status_count != 1:
+            failures.append(f"expected 1 blog live status element, found {blog_parser.status_count}")
+        if not blog_parser.script_present:
+            failures.append("missing code-block copy activation script on blog smoke fixture")
+        if "".join(blog_parser.button_text).strip() != "Copy":
+            failures.append("blog copy button label is not the idle Copy label")
+        if "".join(blog_parser.status_text).strip():
+            failures.append("blog copy status should be empty before client activation")
+        if "".join(blog_parser.code_text) != 'console.log("blog copy scaffold");\n':
+            failures.append("blog code block rendered text does not match the snippet contents")
+        if blog_parser.wrapper_text != ['console.log("blog copy scaffold");\n']:
+            failures.append("blog copy source contract does not expose exact code text")
+        if blog_parser.wrapper_language != ["js"]:
+            failures.append("blog copy source contract does not expose language metadata")
+        if blog_parser.wrapper_info != ["js"]:
+            failures.append("blog copy source contract does not expose info metadata")
+        if blog_parser.wrapper_kind != ["fence"]:
+            failures.append("blog copy source contract does not expose block kind metadata")
 
     if not SCRIPT_OUTPUT.is_file():
         failures.append(f"missing built script asset {SCRIPT_OUTPUT}")
