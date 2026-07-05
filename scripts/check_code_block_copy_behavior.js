@@ -12,6 +12,7 @@ const SCRIPT_PATH = path.join(SITE_ROOT, "src", "assets", "js", "code-block-copy
 const SCRIPT_SOURCE = fs.readFileSync(SCRIPT_PATH, "utf8");
 const siteRequire = createRequire(path.join(SITE_ROOT, "package.json"));
 const { JSDOM } = siteRequire("jsdom");
+const { wrapCodeBlock } = require(path.join(SITE_ROOT, "lib", "codeBlockCopy"));
 
 function createClock() {
   let currentTime = 0;
@@ -457,6 +458,44 @@ async function testEmptySourceTextIsValid() {
   assertCopied(wrapper);
 }
 
+async function testBlogArticleCodeBlockActivatesAndCopiesExactSourceText() {
+  const source = "const html = \"<button>Copy</button>\";\nconsole.log(\"blog copy & exact\");\n";
+  const renderedCode = "<pre><code>DOM fallback text must not be copied\n</code></pre>";
+  const articleMarkup = `
+    <article data-article-shell>
+      <p>Surrounding article text must not be copied.</p>
+      <div data-article-scroll-content>
+        ${wrapCodeBlock(renderedCode, {
+          text: source,
+          language: "js",
+          info: "js",
+          kind: "fence"
+        })}
+      </div>
+    </article>
+  `;
+  const { calls, clock, document, errors } = createHarness([articleMarkup]);
+  const wrapper = document.querySelector("[data-article-scroll-content] [data-code-block-copy]");
+
+  assert.ok(wrapper, "blog article fixture should contain a code-block copy wrapper");
+  const button = getButton(wrapper);
+  assert.equal(button.disabled, false);
+  assert.equal(button.hidden, false);
+
+  await clickAndFlush(button);
+
+  assertNoClientErrors(errors);
+  assert.deepEqual(calls.writeText, [source]);
+  assert.equal(calls.writeText[0].endsWith("\n"), true);
+  assert.equal(calls.writeText[0].includes("<button>Copy</button>"), true);
+  assert.equal(calls.writeText[0].includes("Surrounding article text"), false);
+  assert.equal(calls.writeText[0].includes("DOM fallback text must not be copied"), false);
+  assert.deepEqual(calls.execCommand, []);
+  assertCopied(wrapper);
+  clock.advanceBy(1600);
+  assertIdle(wrapper);
+}
+
 function testDoesNotScrapePreCodeSource() {
   assert.equal(SCRIPT_SOURCE.includes('querySelector("pre code")'), false);
   assert.equal(SCRIPT_SOURCE.includes("querySelector('pre code')"), false);
@@ -477,6 +516,7 @@ async function main() {
     testFailureWhenAllCopyPathsFail,
     testIncompleteWrappersOnlyActivateWithSourceContract,
     testEmptySourceTextIsValid,
+    testBlogArticleCodeBlockActivatesAndCopiesExactSourceText,
     testDoesNotScrapePreCodeSource
   ];
 
