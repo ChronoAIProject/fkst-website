@@ -1,4 +1,6 @@
 {% extends "layouts/base.njk" %}
+{% set docsTocEntries = page | docsTocEntries %}
+{% set hasDocsTocEntries = (docsTocEntries | length) > 0 %}
 
 {% block content %}
 {% include "components/ArticleScrollProgress.njk" %}
@@ -16,8 +18,20 @@
   {% endif %}
 </section>
 
-<div class="article-shell" data-article-shell data-docs-sidebar-shell data-docs-sidebar-open>
-  {% include "components/DocsSidebar.njk" %}
+<div
+  class="article-shell"
+  data-article-shell
+  data-docs-sidebar-shell
+  {% if hasDocsTocEntries %}
+    data-docs-sidebar-open
+  {% else %}
+    data-docs-sidebar-state="closed"
+    data-docs-sidebar-empty
+  {% endif %}
+>
+  {% if hasDocsTocEntries %}
+    {% include "components/DocsSidebar.njk" %}
+  {% endif %}
   <div class="page-content" data-article-scroll-content data-docs-sidebar-content>
   {{ content | safe }}
   </div>
@@ -27,5 +41,7 @@
 {% block scripts %}
     {{ super() }}
     <script src="{{ "/assets/js/article-scroll-progress.js" | url }}" defer data-article-scroll-progress-script></script>
-    <script src="{{ "/assets/js/docs-sidebar.js" | url }}" defer data-docs-sidebar-script></script>
+    {% if hasDocsTocEntries %}
+      <script src="{{ "/assets/js/docs-sidebar.js" | url }}" defer data-docs-sidebar-script></script>
+    {% endif %}
 {% endblock %}

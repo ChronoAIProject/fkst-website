@@ -1,6 +1,12 @@
 const markdownIt = require("markdown-it");
 const { addCodeBlockCopyControls } = require("./lib/codeBlockCopy");
 const {
+  docsTocEntriesForPage,
+  docsTocHref,
+  recordDocsTocEntry,
+  resetDocsTocRegistry,
+} = require("./lib/docsToc");
+const {
   addExternalLinkMarkers,
   externalLinkAttributes,
   externalLinkMarker,
@@ -20,9 +26,13 @@ module.exports = function (eleventyConfig) {
   eleventyConfig.addFilter("shouldUseEleventyUrl", shouldUseEleventyUrlFilter);
   eleventyConfig.addFilter("lastUpdatedMetadata", lastUpdatedMetadata);
   eleventyConfig.addFilter("readingTime", estimateReadingTime);
-  eleventyConfig.addShortcode("headingAnchor", (id, label) => {
+  eleventyConfig.addFilter("docsTocEntries", docsTocEntriesForPage);
+  eleventyConfig.addFilter("docsTocHref", docsTocHref);
+  eleventyConfig.addShortcode("headingAnchor", function (id, title, label, level = 2) {
+    recordDocsTocEntry(this.page, { id, title, level, depth: level });
     return renderHeadingAnchor({ id, label });
   });
+  eleventyConfig.on("eleventy.before", resetDocsTocRegistry);
   eleventyConfig.addPassthroughCopy({ "src/assets": "assets" });
   eleventyConfig.addPassthroughCopy("probe-manifest");
   eleventyConfig.setLibrary("md", markdownLibrary);

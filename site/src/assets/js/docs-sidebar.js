@@ -7,16 +7,25 @@
   const panel = document.querySelector("[data-docs-sidebar-panel]");
   const toggle = document.querySelector("[data-docs-sidebar-toggle]");
   const list = document.querySelector("[data-docs-sidebar-list]");
-  const content = document.querySelector("[data-docs-sidebar-content]");
 
   if (
     !(shell instanceof HTMLElement) ||
     !(sidebar instanceof HTMLElement) ||
     !(panel instanceof HTMLElement) ||
     !(toggle instanceof HTMLButtonElement) ||
-    !(list instanceof HTMLElement) ||
-    !(content instanceof HTMLElement)
+    !(list instanceof HTMLElement)
   ) {
+    return;
+  }
+
+  const hasNavigation = list.querySelector("a[href]") !== null;
+  sidebar.toggleAttribute("data-docs-sidebar-empty", !hasNavigation);
+  shell.toggleAttribute("data-docs-sidebar-empty", !hasNavigation);
+
+  if (!hasNavigation) {
+    panel.hidden = true;
+    toggle.disabled = true;
+    toggle.setAttribute("aria-expanded", "false");
     return;
   }
 
@@ -99,35 +108,6 @@
     return (event.metaKey && !event.ctrlKey) || (event.ctrlKey && !event.metaKey);
   };
 
-  const textForHeading = (heading) => {
-    const clone = heading.cloneNode(true);
-    clone.querySelectorAll("[data-heading-anchor]").forEach((anchor) => anchor.remove());
-    return clone.textContent.trim();
-  };
-
-  const buildNavigation = () => {
-    const headings = Array.from(content.querySelectorAll("h2[id]"));
-    const fragment = document.createDocumentFragment();
-
-    for (const heading of headings) {
-      const label = textForHeading(heading);
-      if (!label) {
-        continue;
-      }
-
-      const item = document.createElement("li");
-      const link = document.createElement("a");
-      link.href = `#${encodeURIComponent(heading.id)}`;
-      link.textContent = label;
-      item.append(link);
-      fragment.append(item);
-    }
-
-    list.replaceChildren(fragment);
-    sidebar.toggleAttribute("data-docs-sidebar-empty", list.children.length === 0);
-  };
-
-  buildNavigation();
   setOpen(readStoredState() !== closedValue, { persist: false });
 
   toggle.disabled = false;
