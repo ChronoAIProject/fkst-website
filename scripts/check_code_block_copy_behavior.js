@@ -92,6 +92,47 @@ function codeWrapper(text, options = {}) {
   return `<div data-code-block-copy${copyText}${language}${info}${kind}>${button}${status}${code}</div>`;
 }
 
+function articleWrapper(innerHtml, options = {}) {
+  const beforeText = options.beforeText || "Surrounding article text must not be copied.";
+  const afterText = options.afterText || "Trailing article text must not be copied.";
+
+  return `
+    <article data-article-shell>
+      <p>${escapeHtml(beforeText)}</p>
+      <div data-article-scroll-content>
+        ${innerHtml}
+      </div>
+      <p>${escapeHtml(afterText)}</p>
+    </article>
+  `;
+}
+
+function blogCodeWrapper(source, options = {}) {
+  const renderedCode = options.renderedCode || "<pre><code>DOM fallback text must not be copied\n</code></pre>";
+
+  return wrapCodeBlock(renderedCode, {
+    text: source,
+    language: options.language ?? "js",
+    info: options.info ?? "js",
+    kind: options.kind ?? "fence"
+  });
+}
+
+function assertExactBlogCopyText(text, source) {
+  assert.equal(text, source);
+  assert.equal(text.endsWith("\n"), true);
+  assert.equal(text.includes("<button>Copy</button>"), true);
+  assert.equal(text.includes("&"), true);
+  assert.equal(text.includes('"quoted"'), true);
+  assert.equal(text.includes("Surrounding article text must not be copied"), false);
+  assert.equal(text.includes("Trailing article text must not be copied"), false);
+  assert.equal(text.includes("DOM fallback text must not be copied"), false);
+  assert.equal(text.includes("Blog button label must not be copied"), false);
+  assert.equal(text.includes("Blog live status must not be copied"), false);
+  assert.equal(text.includes("Copied"), false);
+  assert.equal(text.includes("Copy failed"), false);
+}
+
 function getButton(wrapper) {
   return wrapper.querySelector("[data-code-block-copy-button]");
 }
@@ -459,41 +500,133 @@ async function testEmptySourceTextIsValid() {
 }
 
 async function testBlogArticleCodeBlockActivatesAndCopiesExactSourceText() {
-  const source = "const html = \"<button>Copy</button>\";\nconsole.log(\"blog copy & exact\");\n";
-  const renderedCode = "<pre><code>DOM fallback text must not be copied\n</code></pre>";
-  const articleMarkup = `
-    <article data-article-shell>
-      <p>Surrounding article text must not be copied.</p>
-      <div data-article-scroll-content>
-        ${wrapCodeBlock(renderedCode, {
-          text: source,
-          language: "js",
-          info: "js",
-          kind: "fence"
-        })}
-      </div>
-    </article>
-  `;
+  const source = "const html = \"<button>Copy</button>\";\nconsole.log(\"blog copy & exact \" + \"quoted\" + \" text\");\n";
+  const articleMarkup = articleWrapper(blogCodeWrapper(source));
   const { calls, clock, document, errors } = createHarness([articleMarkup]);
   const wrapper = document.querySelector("[data-article-scroll-content] [data-code-block-copy]");
 
   assert.ok(wrapper, "blog article fixture should contain a code-block copy wrapper");
   const button = getButton(wrapper);
+  const status = getStatus(wrapper);
   assert.equal(button.disabled, false);
   assert.equal(button.hidden, false);
+  button.textContent = "Blog button label must not be copied";
+  status.textContent = "Blog live status must not be copied";
 
   await clickAndFlush(button);
 
   assertNoClientErrors(errors);
   assert.deepEqual(calls.writeText, [source]);
-  assert.equal(calls.writeText[0].endsWith("\n"), true);
-  assert.equal(calls.writeText[0].includes("<button>Copy</button>"), true);
-  assert.equal(calls.writeText[0].includes("Surrounding article text"), false);
-  assert.equal(calls.writeText[0].includes("DOM fallback text must not be copied"), false);
+  assertExactBlogCopyText(calls.writeText[0], source);
   assert.deepEqual(calls.execCommand, []);
   assertCopied(wrapper);
   clock.advanceBy(1600);
   assertIdle(wrapper);
+}
+
+async function testBlogArticleFallbackAfterAsyncClipboardRejectsCopiesExactSourceText() {
+  const source = "const html = \"<button>Copy</button>\";\nconst quote = \"quoted\";\nconsole.log(\"fallback & blog text\", quote);\n";
+  const { calls, document, errors } = createHarness([
+    articleWrapper(blogCodeWrapper(source))
+  ], {
+    writeTextRejects: true
+  });
+  const wrapper = document.querySelector("[data-article-scroll-content] [data-code-block-copy]");
+  const button = getButton(wrapper);
+  const status = getStatus(wrapper);
+  button.textContent = "Blog button label must not be copied";
+  status.textContent = "Blog live status must not be copied";
+
+  await clickAndFlush(button);
+
+  assertNoClientErrors(errors);
+  assert.deepEqual(calls.writeText, [source]);
+  assert.deepEqual(calls.execCommand, [{
+    command: "copy",
+    text: source
+  }]);
+  assertExactBlogCopyText(calls.execCommand[0].text, source);
+  assert.equal(document.querySelectorAll("textarea").length, 0);
+  assertCopied(wrapper);
+}
+
+async function testBlogArticleFailureWhenAllCopyPathsFailResetsAndKeepsControlEnabled() {
+  const source = "const html = \"<button>Copy</button>\";\nconst quote = \"quoted\";\nconsole.log(\"failed copy & blog text\", quote);\n";
+  const { calls, clock, document, errors } = createHarness([
+    articleWrapper(blogCodeWrapper(source))
+  ], {
+    writeTextRejects: true,
+    execCommandResult: false
+  });
+  const wrapper = document.querySelector("[data-article-scroll-content] [data-code-block-copy]");
+  const button = getButton(wrapper);
+  const status = getStatus(wrapper);
+  button.textContent = "Blog button label must not be copied";
+  status.textContent = "Blog live status must not be copied";
+
+  await clickAndFlush(button);
+
+  assertNoClientErrors(errors);
+  assert.deepEqual(calls.writeText, [source]);
+  assert.deepEqual(calls.execCommand, [{
+    command: "copy",
+    text: source
+  }]);
+  assertExactBlogCopyText(calls.execCommand[0].text, source);
+  assertFailed(wrapper);
+  assert.equal(button.disabled, false);
+  assert.equal(document.querySelectorAll("textarea").length, 0);
+  clock.advanceBy(1599);
+  assertFailed(wrapper);
+  assert.equal(button.disabled, false);
+  clock.advanceBy(1);
+  assertIdle(wrapper);
+  assert.equal(button.disabled, false);
+}
+
+async function testIncompleteBlogArticleWrappersRemainInertWithoutSourceContract() {
+  const source = "console.log(\"incomplete blog wrapper should stay inert\");\n";
+  const articleMarkup = articleWrapper([
+    codeWrapper(source, {
+      sourceText: null,
+      language: "js",
+      info: "js",
+      kind: "fence"
+    }),
+    codeWrapper(source, {
+      language: null,
+      info: "js",
+      kind: "fence"
+    }),
+    codeWrapper(source, {
+      language: "js",
+      info: null,
+      kind: "fence"
+    }),
+    codeWrapper(source, {
+      language: "js",
+      info: "js",
+      kind: null
+    })
+  ].join(""));
+  const { calls, document, errors } = createHarness([articleMarkup]);
+  const wrappers = Array.from(document.querySelectorAll("[data-article-scroll-content] [data-code-block-copy]"));
+
+  assert.equal(wrappers.length, 4);
+  for (const wrapper of wrappers) {
+    const button = getButton(wrapper);
+    await clickAndFlush(button);
+    assert.equal(button.disabled, true);
+    assert.equal(button.hidden, true);
+    assert.equal(button.textContent, "Copy");
+    assert.equal(getStatus(wrapper).textContent, "");
+    assert.equal(button.getAttribute("data-copy-state"), null);
+    assert.equal(wrapper.getAttribute("data-copy-state"), null);
+  }
+
+  assertNoClientErrors(errors);
+  assert.deepEqual(calls.writeText, []);
+  assert.deepEqual(calls.execCommand, []);
 }
 
 function testDoesNotScrapePreCodeSource() {
@@ -517,6 +650,9 @@ async function main() {
     testIncompleteWrappersOnlyActivateWithSourceContract,
     testEmptySourceTextIsValid,
     testBlogArticleCodeBlockActivatesAndCopiesExactSourceText,
+    testBlogArticleFallbackAfterAsyncClipboardRejectsCopiesExactSourceText,
+    testBlogArticleFailureWhenAllCopyPathsFailResetsAndKeepsControlEnabled,
+    testIncompleteBlogArticleWrappersRemainInertWithoutSourceContract,
     testDoesNotScrapePreCodeSource
   ];
 
