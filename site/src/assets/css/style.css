@@ -107,8 +107,41 @@ a:focus-visible {
   align-items: center;
   display: flex;
   flex-wrap: wrap;
-  gap: 10px 14px;
+  gap: 10px;
   justify-content: end;
+}
+.locale-switcher {
+  align-items: stretch;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  display: inline-flex;
+  min-height: 34px;
+  overflow: hidden;
+}
+.locale-switcher-option {
+  align-items: center;
+  color: var(--muted);
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 800;
+  justify-content: center;
+  min-width: 40px;
+  padding: 6px 8px;
+  text-decoration: none;
+}
+.locale-switcher-option + .locale-switcher-option {
+  border-left: 1px solid var(--line);
+}
+.locale-switcher-option:hover {
+  color: var(--accent-strong);
+}
+.locale-switcher-option:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: -2px;
+}
+.locale-switcher-option[aria-current="page"] {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
 }
 .theme-toggle-control { display: inline-flex; }
 .theme-toggle-button {
@@ -772,6 +805,16 @@ h2 {
     justify-self: end;
     position: static;
   }
+  .header-actions {
+    gap: 8px;
+  }
+  .locale-switcher-option {
+    min-width: 38px;
+    padding-inline: 7px;
+  }
+  .print-page-button {
+    padding-inline: 8px;
+  }
   .back-to-top-button {
     bottom: max(18px, env(safe-area-inset-bottom));
     right: max(16px, env(safe-area-inset-right));
@@ -815,6 +858,7 @@ h2 {
   .site-header,
   .top-nav,
   .header-actions,
+  .locale-switcher,
   .theme-toggle-control,
   .print-page-control,
   .site-footer,

@@ -123,7 +123,7 @@ def check_stylesheet(failures: list[str]) -> None:
     style = compact(STYLE_OUTPUT.read_text(encoding="utf-8"))
     for needle in (
         "@media print",
-        ".site-header, .top-nav, .header-actions, .theme-toggle-control, .print-page-control, .site-footer, .article-scroll-progress, .docs-sidebar, .docs-sidebar-toggle, .back-to-top-button, .code-block-copy-button, .code-block-copy-status, .keyboard-shortcut-overlay, .keyboard-shortcut-panel, .keyboard-shortcut-close, .heading-anchor-link, .external-link-marker, .repo-actions { display: none !important;",
+        ".site-header, .top-nav, .header-actions, .locale-switcher, .theme-toggle-control, .print-page-control, .site-footer, .article-scroll-progress, .docs-sidebar, .docs-sidebar-toggle, .back-to-top-button, .code-block-copy-button, .code-block-copy-status, .keyboard-shortcut-overlay, .keyboard-shortcut-panel, .keyboard-shortcut-close, .heading-anchor-link, .external-link-marker, .repo-actions { display: none !important;",
         "main, .hero, .features, .page-header, .article-header, .article-shell, .page-content { margin: 0; max-width: none; padding: 0; width: 100%;",
         "background: #ffffff !important;",
         ".page-header a[href]:not([href^=\"#\"]):not([href=\"\"])::after, .page-content a[href]:not([href^=\"#\"]):not([href=\"\"])::after { content: \" (\" attr(href) \")\";",

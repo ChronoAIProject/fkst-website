@@ -11,12 +11,28 @@ const REGISTRY_PATH = path.join(__dirname, "..", "src", "_data", "locales.js");
 const SCRIPT_PATH = path.join(__dirname, "..", "src", "assets", "js", "locale.js");
 const SCRIPT_SOURCE = fs.readFileSync(SCRIPT_PATH, "utf8");
 const STORAGE_KEY = "fkst-locale";
+const DEFAULT_HTML = [
+  "<!doctype html><html><body>",
+  '<nav data-locale-switcher data-locale-current="en">',
+  '<a href="/" data-locale-option data-locale-code="en" aria-current="page">EN</a>',
+  '<a href="/zh/" data-locale-option data-locale-code="zh">中文</a>',
+  "</nav>",
+  "</body></html>",
+].join("");
+const CHINESE_HTML = [
+  "<!doctype html><html><body>",
+  '<nav data-locale-switcher data-locale-current="zh">',
+  '<a href="/" data-locale-option data-locale-code="en">EN</a>',
+  '<a href="/zh/" data-locale-option data-locale-code="zh" aria-current="page">中文</a>',
+  "</nav>",
+  "</body></html>",
+].join("");
 
 function createHarness(options = {}) {
   const errors = [];
-  const dom = new JSDOM("<!doctype html><html><body></body></html>", {
+  const dom = new JSDOM(options.html || DEFAULT_HTML, {
     runScripts: "outside-only",
-    url: "https://fkst.local/",
+    url: options.url || "https://fkst.local/",
   });
 
   const { window } = dom;
@@ -102,7 +118,7 @@ test("locale registry exposes the internal scaffold contract", () => {
   assert.equal(registry.resolveLocale("invalid"), "en");
 });
 
-test("browser helper exposes locale metadata without rendering UI", () => {
+test("browser helper exposes locale metadata and binds rendered switcher UI", () => {
   const { errors, window } = createHarness();
 
   assert.deepEqual(Array.from(window.fkstLocale.supportedLocales), ["en", "zh"]);
@@ -110,7 +126,7 @@ test("browser helper exposes locale metadata without rendering UI", () => {
   assert.equal(window.fkstLocale.localeDetails.zh.label, "中文");
   assert.equal(window.fkstLocale.defaultLocale, "en");
   assert.equal(window.fkstLocale.persistenceKey, STORAGE_KEY);
-  assert.equal(window.document.querySelector("[data-locale-switcher]"), null);
+  assert.equal(window.document.querySelectorAll("[data-locale-switcher]").length, 1);
   assertNoClientErrors(errors);
 });
 
@@ -127,7 +143,11 @@ test("missing or invalid stored locale falls back to default", () => {
 });
 
 test("valid stored locale is returned through guarded storage", () => {
-  const { errors, window } = createHarness({ localStorageValue: "zh" });
+  const { errors, window } = createHarness({
+    html: CHINESE_HTML,
+    localStorageValue: "zh",
+    url: "https://fkst.local/zh/",
+  });
 
   assert.equal(window.fkstLocale.readStoredLocale(), "zh");
   assert.equal(window.fkstLocale.readLocale(), "zh");
@@ -144,6 +164,67 @@ test("persistLocale stores only supported locale values", () => {
   assertNoClientErrors(errors);
 });
 
+test("clicking a language option persists the target locale before navigation", () => {
+  const { errors, window } = createHarness();
+
+  const zh = window.document.querySelector('[data-locale-code="zh"]');
+  zh.addEventListener("click", (event) => event.preventDefault());
+  zh.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true }));
+
+  assert.equal(window.localStorage.getItem(STORAGE_KEY), "zh");
+  assertNoClientErrors(errors);
+});
+
+test("stored locale redirects to a direct alternate only when it differs from the current page", () => {
+  const english = createHarness();
+  const redirects = [];
+  english.window.localStorage.setItem(STORAGE_KEY, "zh");
+
+  assert.equal(english.window.fkstLocale.redirectToStoredLocale((href) => redirects.push(href)), "https://fkst.local/zh/");
+  assert.deepEqual(redirects, ["https://fkst.local/zh/"]);
+  assertNoClientErrors(english.errors);
+
+  const chinese = createHarness({
+    html: CHINESE_HTML,
+    localStorageValue: "zh",
+    url: "https://fkst.local/zh/",
+  });
+  const sameLocaleRedirects = [];
+
+  assert.equal(chinese.window.fkstLocale.redirectToStoredLocale((href) => sameLocaleRedirects.push(href)), null);
+  assert.deepEqual(sameLocaleRedirects, []);
+  assertNoClientErrors(chinese.errors);
+});
+
+test("stored locale redirect skips invalid storage, same-page alternates, and missing alternates", () => {
+  const invalid = createHarness({ localStorageValue: "zh-CN" });
+  const invalidRedirects = [];
+  assert.equal(invalid.window.fkstLocale.redirectToStoredLocale((href) => invalidRedirects.push(href)), null);
+  assert.deepEqual(invalidRedirects, []);
+  assertNoClientErrors(invalid.errors);
+
+  const samePage = createHarness({ localStorageValue: "zh", url: "https://fkst.local/zh/" });
+  const samePageRedirects = [];
+  assert.equal(samePage.window.fkstLocale.redirectToStoredLocale((href) => samePageRedirects.push(href)), null);
+  assert.deepEqual(samePageRedirects, []);
+  assertNoClientErrors(samePage.errors);
+
+  const missingAlternate = createHarness({
+    html: [
+      "<!doctype html><html><body>",
+      '<nav data-locale-switcher data-locale-current="en">',
+      '<a href="/" data-locale-option data-locale-code="en" aria-current="page">EN</a>',
+      "</nav>",
+      "</body></html>",
+    ].join(""),
+    localStorageValue: "zh",
+  });
+  const missingRedirects = [];
+  assert.equal(missingAlternate.window.fkstLocale.redirectToStoredLocale((href) => missingRedirects.push(href)), null);
+  assert.deepEqual(missingRedirects, []);
+  assertNoClientErrors(missingAlternate.errors);
+});
+
 test("storage failures do not break locale reads or writes", () => {
   const readFailure = createHarness({ getItemThrows: true });
   assert.equal(readFailure.window.fkstLocale.readStoredLocale(), null);
@@ -157,19 +238,28 @@ test("storage failures do not break locale reads or writes", () => {
   const unavailable = createHarness({ localStorageThrows: true });
   assert.equal(unavailable.window.fkstLocale.readLocale(), "en");
   assert.equal(unavailable.window.fkstLocale.persistLocale("zh"), "zh");
+  assert.equal(unavailable.window.fkstLocale.redirectToStoredLocale(() => {
+    throw new Error("redirect should not run");
+  }), null);
   assertNoClientErrors(unavailable.errors);
 });
 
 test("clearStoredLocale removes the persisted locale when storage is available", () => {
-  const { errors, window } = createHarness({ localStorageValue: "zh" });
+  const { errors, window } = createHarness({
+    html: CHINESE_HTML,
+    localStorageValue: "zh",
+    url: "https://fkst.local/zh/",
+  });
 
   assert.equal(window.fkstLocale.clearStoredLocale(), "en");
   assert.equal(window.localStorage.getItem(STORAGE_KEY), null);
   assertNoClientErrors(errors);
 
   const removeFailure = createHarness({
+    html: CHINESE_HTML,
     localStorageValue: "zh",
     removeItemThrows: true,
+    url: "https://fkst.local/zh/",
   });
   assert.equal(removeFailure.window.fkstLocale.clearStoredLocale(), "en");
   assertNoClientErrors(removeFailure.errors);

@@ -1,0 +1,30 @@
+{% set hasLocaleAlternates =
+  localeAlternates
+  and localeAlternates.en
+  and localeAlternates.zh
+  and (localeAlternates.en | shouldUseEleventyUrl)
+  and (localeAlternates.zh | shouldUseEleventyUrl)
+%}
+{% set hasSupportedLocale = localeCode == "en" or localeCode == "zh" %}
+{% if hasLocaleAlternates and hasSupportedLocale %}
+  <nav
+    class="locale-switcher"
+    aria-label="Language"
+    data-locale-switcher
+    data-locale-current="{{ localeCode }}"
+  >
+    {% for locale in locales.supportedLocales %}
+      {% set isCurrentLocale = locale.code == localeCode %}
+      <a
+        class="locale-switcher-option{% if isCurrentLocale %} is-current{% endif %}"
+        href="{{ localeAlternates[locale.code] | url }}"
+        hreflang="{{ locale.htmlLang }}"
+        lang="{{ locale.htmlLang }}"
+        data-locale-option
+        data-locale-code="{{ locale.code }}"
+        aria-label="{{ locale.name }}{% if isCurrentLocale %}, current language{% endif %}"
+        {% if isCurrentLocale %}aria-current="page"{% endif %}
+      >{{ locale.label }}</a>
+    {% endfor %}
+  </nav>
+{% endif %}
