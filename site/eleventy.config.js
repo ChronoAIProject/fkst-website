@@ -13,6 +13,7 @@ const {
   shouldUseEleventyUrlFilter,
 } = require("./lib/externalLinks");
 const { renderHeadingAnchor } = require("./lib/headingAnchors");
+const { blogCategoryBadgeData } = require("./lib/blogCategoryBadges");
 const { lastUpdatedMetadata } = require("./src/_includes/utils/last-updated");
 const { estimateReadingTime } = require("./src/_includes/utils/reading-time");
 
@@ -28,6 +29,7 @@ module.exports = function (eleventyConfig) {
   eleventyConfig.addFilter("readingTime", estimateReadingTime);
   eleventyConfig.addFilter("docsTocEntries", docsTocEntriesForPage);
   eleventyConfig.addFilter("docsTocHref", docsTocHref);
+  eleventyConfig.addFilter("blogCategoryBadgeData", blogCategoryBadgeData);
   eleventyConfig.addShortcode("headingAnchor", function (id, title, label, level = 2) {
     recordDocsTocEntry(this.page, { id, title, level, depth: level });
     return renderHeadingAnchor({ id, label });

@@ -595,6 +595,54 @@ h2 {
   color: var(--muted);
   margin-bottom: 0;
 }
+.blog-post-summary-meta {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.95rem;
+  font-weight: 700;
+  gap: 8px;
+  min-width: 0;
+}
+.blog-category-badge {
+  align-items: center;
+  background: var(--accent-soft);
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--line));
+  border-radius: 6px;
+  color: var(--accent-strong);
+  display: inline-flex;
+  flex: 0 1 auto;
+  font-size: 0.8rem;
+  font-weight: 800;
+  gap: 5px;
+  line-height: 1;
+  max-width: 100%;
+  min-height: 26px;
+  min-width: 0;
+  padding: 5px 8px;
+  vertical-align: middle;
+  white-space: normal;
+}
+.blog-category-badge--release {
+  border-color: color-mix(in srgb, var(--accent) 46%, var(--line));
+}
+.blog-category-badge--deep-dive {
+  background: color-mix(in srgb, var(--accent-soft) 74%, var(--surface));
+}
+.blog-category-badge--text-only {
+  padding-inline: 9px;
+}
+.blog-category-badge-icon {
+  display: block;
+  flex: 0 0 auto;
+  height: 14px;
+  width: 14px;
+}
+.blog-category-badge-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .site-footer {
   border-top: 1px solid var(--line);
   color: var(--muted);
@@ -818,6 +866,9 @@ h2 {
   .back-to-top-button {
     bottom: max(18px, env(safe-area-inset-bottom));
     right: max(16px, env(safe-area-inset-right));
+  }
+  .blog-category-badge {
+    min-height: 24px;
   }
 }
 @media print {
