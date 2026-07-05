@@ -1,0 +1,18 @@
+{% macro blogCategoryBadge(category) %}
+  {% set badge = category | blogCategoryBadgeData %}
+  {% if badge %}
+    <span class="blog-category-badge{% if badge.slug %} blog-category-badge--{{ badge.slug }}{% else %} blog-category-badge--text-only{% endif %}" data-blog-category-badge>
+      {% if badge.iconHref %}
+        <img
+          src="{{ badge.iconHref | url }}"
+          alt=""
+          aria-hidden="true"
+          class="blog-category-badge-icon"
+          width="14"
+          height="14"
+        >
+      {% endif %}
+      <span class="blog-category-badge-label">{{ badge.label }}</span>
+    </span>
+  {% endif %}
+{% endmacro %}

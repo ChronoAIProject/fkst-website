@@ -1,0 +1,80 @@
+---
+layout: layouts/page.njk
+permalink: /blog.html
+lang: en
+localeCode: en
+title: Blog | fkst
+description: "Project updates, releases, and technical notes from the fkst autonomous pipeline."
+brandHref: /
+nav:
+  - label: Home
+    href: /
+  - label: Blog
+    current: true
+  - label: Architecture
+    href: /architecture.html
+  - label: Doctrine
+    href: /doctrine.html
+  - label: fkst-substrate
+    href: https://github.com/ChronoAIProject/fkst-substrate
+  - label: fkst-packages
+    href: https://github.com/ChronoAIProject/fkst-packages
+  - label: fkst-website
+    href: https://github.com/ChronoAIProject/fkst-website
+localeAlternates:
+  en: /blog.html
+  zh: /zh/blog.html
+footerHref: /
+footerLabel: Back to home
+---
+{% from "components/BlogCategoryBadge.njk" import blogCategoryBadge %}
+
+<section class="page-header" aria-labelledby="page-title">
+  <p class="eyebrow">Blog</p>
+  <h1 id="page-title">Updates from the fkst pipeline.</h1>
+  <p class="page-intro">
+    Release notes, project news, and technical write-ups from the autonomous
+    development loop that maintains this site.
+  </p>
+</section>
+
+<section class="features blog-index" aria-labelledby="blog-index-title">
+  <div class="section-heading">
+    <h2 id="blog-index-title" class="heading-anchor-target">Latest posts{% headingAnchor "blog-index-title", "Latest posts", "Link to Latest posts section" %}</h2>
+  </div>
+  <div class="feature-grid">
+    <article class="feature-card blog-post-summary">
+      <div class="blog-post-summary-meta">
+        {{ blogCategoryBadge("news") }}
+        <time datetime="2026-07-05">July 5, 2026</time>
+      </div>
+      <h3>Project news now has a clearer index surface</h3>
+      <p>
+        The site now separates pipeline announcements, releases, and deeper
+        implementation notes so readers can scan update types quickly.
+      </p>
+    </article>
+    <article class="feature-card blog-post-summary">
+      <div class="blog-post-summary-meta">
+        {{ blogCategoryBadge("release") }}
+        <time datetime="2026-07-05">July 5, 2026</time>
+      </div>
+      <h3>Website package updates continue through fkst</h3>
+      <p>
+        The website repository keeps its hand-authored site source separate
+        from website-domain Lua packages while CI validates both surfaces.
+      </p>
+    </article>
+    <article class="feature-card blog-post-summary">
+      <div class="blog-post-summary-meta">
+        {{ blogCategoryBadge("deep-dive") }}
+        <time datetime="2026-07-05">July 5, 2026</time>
+      </div>
+      <h3>Why the package boundary stays queue-only</h3>
+      <p>
+        Cross-repo composition remains explicit: packages integrate through
+        qualified queues and pinned package roots instead of private imports.
+      </p>
+    </article>
+  </div>
+</section>
