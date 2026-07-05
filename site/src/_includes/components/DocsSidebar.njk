@@ -3,10 +3,11 @@
   id="docs-sidebar"
   data-docs-sidebar
   data-docs-sidebar-state="open"
+  {% if not hasDocsTocEntries %}data-docs-sidebar-empty hidden{% endif %}
   aria-labelledby="docs-sidebar-heading"
 >
   <div class="docs-sidebar-header">
-    <h2 id="docs-sidebar-heading">On this page</h2>
+    <h2 id="docs-sidebar-heading">{% if lang == "zh-Hans" %}本页内容{% else %}On this page{% endif %}</h2>
     <button
       class="docs-sidebar-toggle"
       type="button"
@@ -14,6 +15,7 @@
       aria-controls="docs-sidebar-panel"
       aria-expanded="true"
       aria-label="Hide docs sidebar"
+      {% if not hasDocsTocEntries %}disabled{% endif %}
     >
       <span aria-hidden="true">Sidebar</span>
     </button>
@@ -23,7 +25,18 @@
     id="docs-sidebar-panel"
     data-docs-sidebar-panel
     aria-label="Article sections"
+    {% if not hasDocsTocEntries %}hidden{% endif %}
   >
-    <ol class="docs-sidebar-list" data-docs-sidebar-list></ol>
+    <ol class="docs-sidebar-list" data-docs-sidebar-list>
+      {% for entry in docsTocEntries %}
+        <li
+          data-docs-toc-entry
+          data-docs-toc-level="{{ entry.level }}"
+          data-docs-toc-depth="{{ entry.depth }}"
+        >
+          <a href="{{ entry.id | docsTocHref }}" data-docs-toc-link>{{ entry.title | escape }}</a>
+        </li>
+      {% endfor %}
+    </ol>
   </nav>
 </aside>

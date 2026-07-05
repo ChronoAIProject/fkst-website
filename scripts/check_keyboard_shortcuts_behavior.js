@@ -66,7 +66,14 @@ function createBaseMarkup() {
               aria-label="Hide docs sidebar"
             >Sidebar</button>
             <nav id="docs-sidebar-panel" data-docs-sidebar-panel aria-label="Article sections">
-              <ol data-docs-sidebar-list></ol>
+              <ol data-docs-sidebar-list>
+                <li data-docs-toc-entry data-docs-toc-level="2" data-docs-toc-depth="2">
+                  <a href="#company-model" data-docs-toc-link>Company model</a>
+                </li>
+                <li data-docs-toc-entry data-docs-toc-level="2" data-docs-toc-depth="2">
+                  <a href="#delivery-model" data-docs-toc-link>Reliable delivery</a>
+                </li>
+              </ol>
             </nav>
           </aside>
           <div data-docs-sidebar-content>
@@ -85,6 +92,15 @@ function createBaseMarkup() {
 }
 
 function createSidebarMarkup(content = "") {
+  const navigation = `
+    <li data-docs-toc-entry data-docs-toc-level="2" data-docs-toc-depth="2">
+      <a href="#company-model" data-docs-toc-link>Company model</a>
+    </li>
+    <li data-docs-toc-entry data-docs-toc-level="2" data-docs-toc-depth="2">
+      <a href="#delivery-model" data-docs-toc-link>Reliable delivery</a>
+    </li>
+  `;
+
   return `<!doctype html>
     <html>
       <body>
@@ -98,7 +114,7 @@ function createSidebarMarkup(content = "") {
               aria-label="Hide docs sidebar"
             >Sidebar</button>
             <nav id="docs-sidebar-panel" data-docs-sidebar-panel aria-label="Article sections">
-              <ol data-docs-sidebar-list></ol>
+              <ol data-docs-sidebar-list>${navigation}</ol>
             </nav>
           </aside>
           <div data-docs-sidebar-content>${content}</div>
@@ -429,6 +445,15 @@ function expectedHeadingLinks(document) {
     .filter((heading) => heading.label);
 }
 
+function expectedRenderedTocLinks(document) {
+  return Array.from(document.querySelectorAll("[data-docs-toc-entry] [data-docs-toc-link]"))
+    .map((link) => ({
+      href: link.getAttribute("href"),
+      label: normalizeText(link.textContent)
+    }))
+    .filter((link) => link.href && link.label);
+}
+
 function openFromOpener(harness) {
   const opener = harness.document.getElementById("opener");
   opener.focus();
@@ -479,7 +504,7 @@ function testBuiltPagesIncludeActivationScripts() {
   }
 }
 
-function testBuiltArticlePagesBuildDocsSidebarNavigation() {
+function testBuiltArticlePagesRenderDocsSidebarNavigation() {
   for (const route of ARTICLE_ROUTES) {
     const html = fs.readFileSync(outputPath(route), "utf8");
     const harness = createSidebarHarness({
@@ -487,9 +512,18 @@ function testBuiltArticlePagesBuildDocsSidebarNavigation() {
       url: `https://fkst.local${route}`
     });
     const expectedLinks = expectedHeadingLinks(harness.document);
+    const renderedTocLinks = expectedRenderedTocLinks(harness.document);
     const links = sidebarLinks(harness);
 
     assert.ok(expectedLinks.length > 0, `${route}: expected article headings`);
+    assert.deepEqual(
+      renderedTocLinks,
+      expectedLinks.map((heading) => ({
+        href: heading.href,
+        label: heading.label
+      })),
+      `${route}: rendered TOC must mirror article headings`
+    );
     assert.equal(links.length, expectedLinks.length, `${route}: sidebar link count mismatch`);
     assert.deepEqual(
       links.map((link) => ({
@@ -721,21 +755,39 @@ function testDocsSidebarStorageFailureFallback() {
 
 function testDocsSidebarEmptyHeadingState() {
   const harness = createSidebarHarness({
-    content: `
-      <section>
-        <h2>No id heading</h2>
-        <p>Not linkable.</p>
-      </section>
-      <section>
-        <h2 id="anchor-only"><a href="#anchor-only" data-heading-anchor>#</a></h2>
-        <p>Anchor-only heading has no label after stripping heading anchors.</p>
-      </section>
-    `
+    html: `<!doctype html>
+      <html>
+        <body>
+          <div class="article-shell" data-docs-sidebar-shell data-docs-sidebar-empty>
+            <aside data-docs-sidebar data-docs-sidebar-state="open" data-docs-sidebar-empty>
+              <button
+                type="button"
+                data-docs-sidebar-toggle
+                aria-controls="docs-sidebar-panel"
+                aria-expanded="true"
+                aria-label="Hide docs sidebar"
+              >Sidebar</button>
+              <nav id="docs-sidebar-panel" data-docs-sidebar-panel aria-label="Article sections">
+                <ol data-docs-sidebar-list></ol>
+              </nav>
+            </aside>
+            <div data-docs-sidebar-content>
+              <section>
+                <h2>No id heading</h2>
+                <p>Not linkable.</p>
+              </section>
+            </div>
+          </div>
+        </body>
+      </html>`
   });
 
-  assertSidebarState(harness, "open");
   assert.deepEqual(sidebarLinks(harness), []);
   assert.equal(harness.sidebar.hasAttribute("data-docs-sidebar-empty"), true);
+  assert.equal(harness.sidebarShell.hasAttribute("data-docs-sidebar-empty"), true);
+  assert.equal(harness.sidebarPanel.hasAttribute("hidden"), true);
+  assert.equal(harness.sidebarToggle.disabled, true);
+  assert.equal(harness.sidebarToggle.getAttribute("aria-expanded"), "false");
   assertNoClientErrors(harness.errors);
 }
 
@@ -758,7 +810,7 @@ function testQuestionHelpCoexistsWithDocsSidebarShortcut() {
 function main() {
   const tests = [
     testBuiltPagesIncludeActivationScripts,
-    testBuiltArticlePagesBuildDocsSidebarNavigation,
+    testBuiltArticlePagesRenderDocsSidebarNavigation,
     testNonArticlePagesDoNotRunDocsSidebarContract,
     testQuestionOpensAndCloseButtonRestoresFocus,
     testEscapeCancelClosesAndRestoresFocus,
