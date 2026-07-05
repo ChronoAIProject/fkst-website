@@ -42,38 +42,20 @@ footerLabel: 返回首页
     <h2 id="blog-index-title" class="heading-anchor-target">最新文章{% headingAnchor "blog-index-title", "最新文章", "Link to latest posts section" %}</h2>
   </div>
   <div class="feature-grid">
-    <article class="feature-card blog-post-summary">
+    {% for item in blogPosts.zh %}
+    {% set post = item.post %}
+    <article
+      class="feature-card blog-post-summary"
+      data-post-contract="{{ post.contract }}"
+      data-post-source-format="{{ post.sourceFormat }}"
+    >
       <div class="blog-post-summary-meta">
-        {{ blogCategoryBadge("news") }}
-        <time datetime="2026-07-05">2026-07-05</time>
+        {{ blogCategoryBadge(post.category) }}
+        <time datetime="{{ post.publishedDate }}">{{ item.displayDate }}</time>
       </div>
-      <h3>项目新闻现在有了更清晰的索引表面</h3>
-      <p>
-        站点现在区分流水线公告、发布记录和更深入的实现说明，让读者
-        更快判断更新类型。
-      </p>
+      <h3>{{ post.articleTitle }}</h3>
+      <p>{{ post.summary }}</p>
     </article>
-    <article class="feature-card blog-post-summary">
-      <div class="blog-post-summary-meta">
-        {{ blogCategoryBadge("release") }}
-        <time datetime="2026-07-05">2026-07-05</time>
-      </div>
-      <h3>Website package 持续通过 fkst 更新</h3>
-      <p>
-        website 仓库继续把手写站点源码与 website 域 Lua package 分开，
-        并由 CI 同时验证两类表面。
-      </p>
-    </article>
-    <article class="feature-card blog-post-summary">
-      <div class="blog-post-summary-meta">
-        {{ blogCategoryBadge("deep-dive") }}
-        <time datetime="2026-07-05">2026-07-05</time>
-      </div>
-      <h3>为什么 package 边界保持 queue-only</h3>
-      <p>
-        跨仓组合保持显式：package 通过限定名 queue 与 pinned package
-        root 集成，而不是通过 private import。
-      </p>
-    </article>
+    {% endfor %}
   </div>
 </section>
