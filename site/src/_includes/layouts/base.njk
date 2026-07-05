@@ -8,6 +8,25 @@
       name="description"
       content="{{ description }}"
     >
+    <script data-theme-boot-script>
+      (() => {
+        const supportedThemes = ["light", "dark"];
+        const storageKey = "fkst-theme";
+        let theme = null;
+
+        try {
+          const storedTheme = window.localStorage.getItem(storageKey);
+          if (supportedThemes.includes(storedTheme)) {
+            theme = storedTheme;
+          }
+        } catch (_error) {}
+
+        if (theme) {
+          document.documentElement.setAttribute("data-theme", theme);
+          document.documentElement.style.colorScheme = theme;
+        }
+      })();
+    </script>
     <link rel="stylesheet" href="{{ "/assets/css/style.css" | url }}">
   </head>
   <body>

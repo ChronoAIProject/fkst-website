@@ -326,6 +326,38 @@ test("clicking toggles document theme, persistence, and accessibility state", ()
   assertNoClientErrors(errors);
 });
 
+test("persisted click choice is restored on the next mount", () => {
+  const firstMount = createHarness();
+
+  click(firstMount.button, firstMount.errors);
+
+  assertRootTheme(firstMount.document, {
+    hasDataTheme: true,
+    dataTheme: "dark",
+    colorScheme: "dark"
+  });
+  assert.equal(firstMount.window.localStorage.getItem(STORAGE_KEY), "dark");
+  assertNoClientErrors(firstMount.errors);
+
+  const secondMount = createHarness({
+    localStorageValue: firstMount.window.localStorage.getItem(STORAGE_KEY)
+  });
+
+  assertRootTheme(secondMount.document, {
+    hasDataTheme: true,
+    dataTheme: "dark",
+    colorScheme: "dark"
+  });
+  assert.equal(secondMount.window.fkstTheme.readTheme(), "dark");
+  assertButtonState(secondMount.button, {
+    ariaChecked: "true",
+    ariaLabel: "Switch to light theme",
+    dataTheme: "dark",
+    disabled: false
+  });
+  assertNoClientErrors(secondMount.errors);
+});
+
 test("storage write failure still applies the active theme without client errors", () => {
   const { button, document, errors, window } = createHarness({ setItemThrows: true });
 

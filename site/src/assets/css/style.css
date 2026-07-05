@@ -780,18 +780,16 @@ h2 {
   padding: 4px 8px;
   text-align: center;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .code-block-copy-button {
-    color: #082f2c;
-  }
-  :root:not([data-theme="light"]) .back-to-top-button {
-    color: #082f2c;
-  }
-}
 [data-theme="dark"] .repo-actions .primary-action,
 [data-theme="dark"] .code-block-copy-button,
 [data-theme="dark"] .back-to-top-button {
   color: #082f2c;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .code-block-copy-button,
+  :root:not([data-theme="light"]) .back-to-top-button {
+    color: #082f2c;
+  }
 }
 [data-theme="light"] .repo-actions .primary-action {
   color: #ffffff;
