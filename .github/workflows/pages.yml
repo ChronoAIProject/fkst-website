@@ -35,6 +35,7 @@ jobs:
         run: |
           npm ci
           npm run build
+          npm run test:status
 
       - name: Probe built artifact before deploy
         run: bash scripts/probe_built_site.sh site/_site

@@ -1,0 +1,65 @@
+---
+import PageLayout from "../../layouts/PageLayout.astro";
+import { loadBoardSnapshot } from "../../data/site-board.mjs";
+
+const board = loadBoardSnapshot();
+const item = board.items[0];
+
+if (!item) {
+  throw new Error("Board snapshot must contain at least one issue or PR");
+}
+
+const frontmatter = {
+  title: "fkst status",
+  description: "Current fkst development board snapshot.",
+  lang: "en",
+  pageKey: "status",
+  eyebrow: "Status",
+  heading: "fkst development board",
+  intro: `One current item from the ${board.repo} board snapshot.`,
+};
+
+const availableCounts = [
+  { label: "Open issues", value: board.items.filter((entry) => entry.kind === "Issue").length },
+  { label: "Open PRs", value: board.items.filter((entry) => entry.kind === "PR").length },
+  { label: "Rendered rows", value: 1 },
+];
+---
+
+<PageLayout frontmatter={frontmatter}>
+  <section class="status-summary" aria-labelledby="status-summary-title">
+    <h2 id="status-summary-title">Snapshot counts</h2>
+    <dl>
+      {
+        availableCounts.map((count) => (
+          <div>
+            <dt>{count.label}</dt>
+            <dd>{count.value}</dd>
+          </div>
+        ))
+      }
+    </dl>
+  </section>
+
+  <section class="status-board" aria-labelledby="status-board-title">
+    <h2 id="status-board-title">Board row</h2>
+    <article class="status-row">
+      <div>
+        <p class="status-repo">{board.repo}</p>
+        <h3>
+          <a href={item.url}>{item.kind} #{item.number}: {item.title}</a>
+        </h3>
+      </div>
+      <dl class="status-fields">
+        <div>
+          <dt>State</dt>
+          <dd>{item.state}</dd>
+        </div>
+        <div>
+          <dt>Updated</dt>
+          <dd>{item.updatedAt}</dd>
+        </div>
+      </dl>
+    </article>
+  </section>
+</PageLayout>

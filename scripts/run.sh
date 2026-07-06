@@ -80,7 +80,7 @@ ensure_fkst_packages_checkout() {
 
 usage() {
   cat <<'EOF'
-usage: scripts/run.sh <check|test|supervise> [args]
+usage: scripts/run.sh <check|test|test-affected|supervise> [args]
 
 Hydrates the fkst.lock-resolved fkst-packages checkout, runs website-local checks for
 `check`, then delegates shared orchestration to:
@@ -104,8 +104,49 @@ cmd_check() {
   python3 -B "$ROOT/scripts/probe_site_test.py"
 }
 
+changed_paths() {
+  {
+    git -C "$ROOT" diff --name-only HEAD --
+    git -C "$ROOT" ls-files --others --exclude-standard
+  } | sed '/^$/d' | sort -u
+}
+
+cmd_test_affected() {
+  local path package broad=0
+  local packages=()
+  local changed
+  changed="$(changed_paths)"
+  if [ -z "$changed" ]; then
+    shared_host_run test
+    return
+  fi
+
+  while IFS= read -r path; do
+    case "$path" in
+      .fkst/local-packages/*/*)
+        package="${path#".fkst/local-packages/"}"
+        package="${package%%/*}"
+        packages+=("$package")
+        ;;
+      *)
+        broad=1
+        ;;
+    esac
+  done <<< "$changed"
+
+  if [ "$broad" -eq 1 ]; then
+    shared_host_run test
+    return
+  fi
+
+  printf '%s\n' "${packages[@]}" | sort -u | while IFS= read -r package; do
+    [ -n "$package" ] || continue
+    shared_host_run test "$package"
+  done
+}
+
 case "${1:-}" in
-  check|test|supervise) ;;
+  check|test|test-affected|supervise) ;;
   -h|--help|help|"") usage; exit 0 ;;
   *) echo "unknown subcommand: $1" >&2; usage >&2; exit 2 ;;
 esac
@@ -116,6 +157,7 @@ shared="$(ensure_fkst_packages_checkout "$pin")"
 
 case "$1" in
   check) shift; cmd_check "$@" ;;
+  test-affected) shift; cmd_test_affected "$@" ;;
   test|supervise) exec "$shared/scripts/run.sh" host \
     --host-root "$ROOT" \
     --local-packages "$LOCAL_PACKAGES" \

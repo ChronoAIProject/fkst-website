@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
+    "test:status": "node scripts/status-smoke-test.mjs",
     "preview": "astro preview --host 127.0.0.1"
   },
   "devDependencies": {

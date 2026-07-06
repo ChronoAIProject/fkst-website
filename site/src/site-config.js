@@ -36,6 +36,9 @@ const pageFiles = {
     en: "doctrine.html",
     zh: "zh/doctrine.html",
   },
+  status: {
+    en: "status/",
+  },
   about: {
     en: "about.html",
     zh: "zh/about.html",
@@ -90,9 +93,13 @@ function relativeFrom(currentDir, targetPath) {
 }
 
 export function getHref(currentLocale, currentPage, targetLocale, targetPage) {
+  const targetPath = pageFiles[targetPage]?.[targetLocale];
+  if (!targetPath) {
+    throw new Error(`Missing route for ${targetLocale}/${targetPage}`);
+  }
   return relativeFrom(
     dirname(pageFiles[currentPage][currentLocale]),
-    pageFiles[targetPage][targetLocale],
+    targetPath,
   );
 }
 
@@ -120,15 +127,11 @@ export function getNav(locale, currentPage) {
 
 export function getLanguageSwitch(locale, pageKey) {
   return [
-    {
-      label: "EN",
-      href: getHref(locale, pageKey, "en", pageKey),
-      current: locale === "en",
-    },
-    {
-      label: "中文",
-      href: getHref(locale, pageKey, "zh", pageKey),
-      current: locale === "zh",
-    },
-  ];
+    { locale: "en", label: "EN" },
+    { locale: "zh", label: "中文" },
+  ].filter((item) => pageFiles[pageKey][item.locale]).map((item) => ({
+    label: item.label,
+    href: getHref(locale, pageKey, item.locale, pageKey),
+    current: locale === item.locale,
+  }));
 }
