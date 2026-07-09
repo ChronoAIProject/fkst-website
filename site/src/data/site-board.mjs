@@ -1,6 +1,12 @@
-import boardSnapshot from "./fixtures/fkst.site.board.v1.json";
+import { open, realpath } from "node:fs/promises";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 
-const BOARD_SCHEMA_VERSION = "fkst.site.board.v1";
+export const SITE_BOARD_SCHEMA_VERSION = "fkst.site.board.v1";
+export const SITE_BOARD_FILENAME = "fkst.site.board.v1.json";
+
+const DEFAULT_SITE_OUT = "build/fkst/data";
+const SITE_ROOT = resolve(process.cwd());
+const REPOSITORY_ROOT = resolve(SITE_ROOT, "..");
 
 function assertObject(value, context) {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
@@ -61,9 +67,9 @@ function normaliseRows(rows, kind) {
 
 function normaliseSnapshot(snapshot) {
   assertObject(snapshot, "site-board snapshot");
-  if (snapshot.schema_version !== BOARD_SCHEMA_VERSION) {
+  if (snapshot.schema_version !== SITE_BOARD_SCHEMA_VERSION) {
     throw new Error(
-      `site-board snapshot schema_version must be ${BOARD_SCHEMA_VERSION}`,
+      `site-board snapshot schema_version must be ${SITE_BOARD_SCHEMA_VERSION}`,
     );
   }
 
@@ -75,12 +81,96 @@ function normaliseSnapshot(snapshot) {
   };
 }
 
-const siteBoardSnapshot = normaliseSnapshot(boardSnapshot);
-
-export function getSiteBoardSnapshot() {
-  return siteBoardSnapshot;
+function isInsideSiteRoot(path) {
+  const relation = relative(SITE_ROOT, path);
+  return (
+    relation === "" ||
+    (!isAbsolute(relation) && relation !== ".." && !relation.startsWith(`..${sep}`))
+  );
 }
 
-export function getSiteBoardRows(snapshot = siteBoardSnapshot) {
+function unavailable(reason) {
+  return { status: "unavailable", reason };
+}
+
+function configuredSnapshotPath(siteOut) {
+  const outputDirectory = siteOut === undefined || siteOut === ""
+    ? DEFAULT_SITE_OUT
+    : siteOut;
+  if (typeof outputDirectory !== "string") {
+    throw new TypeError("FKST_SITE_OUT must be a path string");
+  }
+  return resolve(REPOSITORY_ROOT, outputDirectory, SITE_BOARD_FILENAME);
+}
+
+async function readSnapshotInput(snapshotPath) {
+  if (isInsideSiteRoot(snapshotPath)) {
+    return null;
+  }
+
+  let file;
+  try {
+    const canonicalPath = await realpath(snapshotPath);
+    if (isInsideSiteRoot(canonicalPath)) {
+      return null;
+    }
+
+    file = await open(canonicalPath, "r");
+    const metadata = await file.stat();
+    if (!metadata.isFile() || !Number.isFinite(metadata.mtimeMs)) {
+      return null;
+    }
+
+    return {
+      generatedAt: metadata.mtime.toISOString(),
+      raw: await file.readFile("utf8"),
+    };
+  } catch {
+    return null;
+  } finally {
+    await file?.close().catch(() => {});
+  }
+}
+
+export async function loadSiteBoardSnapshot({
+  siteOut = process.env.FKST_SITE_OUT,
+} = {}) {
+  let snapshotPath;
+  try {
+    snapshotPath = configuredSnapshotPath(siteOut);
+  } catch {
+    return unavailable("configuration");
+  }
+
+  const input = await readSnapshotInput(snapshotPath);
+  if (input === null) {
+    return unavailable("input");
+  }
+
+  let document;
+  try {
+    document = JSON.parse(input.raw);
+  } catch {
+    return unavailable("json");
+  }
+
+  let snapshot;
+  try {
+    snapshot = normaliseSnapshot(document);
+  } catch {
+    return unavailable("validation");
+  }
+
+  return {
+    status: "available",
+    snapshot,
+    provenance: {
+      generatedAt: input.generatedAt,
+      source: `GitHub open issues and pull requests for ${snapshot.repo}`,
+    },
+  };
+}
+
+export function getSiteBoardRows(snapshot) {
   return [...snapshot.issues, ...snapshot.prs];
 }

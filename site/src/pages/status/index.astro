@@ -7,19 +7,28 @@ import {
 } from "../../site-config";
 import {
   getSiteBoardRows,
-  getSiteBoardSnapshot,
+  loadSiteBoardSnapshot,
+  SITE_BOARD_FILENAME,
 } from "../../data/site-board.mjs";
 
 const locale = "en";
 const pageKey = "status";
-const board = getSiteBoardSnapshot();
-const rows = getSiteBoardRows(board);
+const boardState = await loadSiteBoardSnapshot();
+const boardView = boardState.status === "available"
+  ? {
+      board: boardState.snapshot,
+      provenance: boardState.provenance,
+      rows: getSiteBoardRows(boardState.snapshot),
+    }
+  : null;
 const nav = getNav(locale, pageKey);
-const counts = [
-  { label: "Open issues", value: board.issues.length },
-  { label: "Open pull requests", value: board.prs.length },
-  { label: "Snapshot rows", value: rows.length },
-];
+const counts = boardView
+  ? [
+      { label: "Open issues", value: boardView.board.issues.length },
+      { label: "Open pull requests", value: boardView.board.prs.length },
+      { label: "Snapshot rows", value: boardView.rows.length },
+    ]
+  : [];
 
 function rowKindLabel(kind) {
   return kind === "prs" ? "PR" : "Issue";
@@ -28,63 +37,79 @@ function rowKindLabel(kind) {
 
 <BaseLayout
   title="fkst status"
-  description="Current fkst website board snapshot rendered from the committed site-board fixture."
+  description={boardView
+    ? "Current fkst website board status from a validated generated site-board snapshot."
+    : "The generated fkst website board snapshot is unavailable."}
   lang="en"
   brandHref={getBrandHref(locale, pageKey)}
   cssHref={getAssetHref(locale, pageKey, "assets/css/style.css")}
   nav={nav}
-  footerText="This status page renders the committed fkst.site.board.v1 snapshot fixture at build time."
+  footerText="This status page renders only validated generated fkst.site.board.v1 data supplied through FKST_SITE_OUT."
 >
   <section class="page-header status-header" aria-labelledby="page-title">
     <p class="eyebrow">Site board</p>
     <h1 id="page-title">Status</h1>
-    <p class="page-intro">
-      A deterministic view of the committed <code>fkst.site.board.v1</code>
-      snapshot for <code>{board.repo}</code>.
-    </p>
+    {
+      boardView ? (
+        <p class="page-intro">
+          A build-time view of the generated <code>fkst.site.board.v1</code>
+          snapshot for <code>{boardView.board.repo}</code>.
+        </p>
+      ) : (
+        <p class="page-intro">
+          The generated <code>fkst.site.board.v1</code> snapshot was not
+          available from the configured build input.
+        </p>
+      )
+    }
   </section>
 
-  <section class="status-content" aria-labelledby="status-summary-title">
-    <div class="status-summary" aria-labelledby="status-summary-title">
-      <h2 id="status-summary-title">Snapshot summary</h2>
-      <dl>
-        {
-          counts.map((item) => (
-            <div>
-              <dt>{item.label}</dt>
-              <dd>{item.value}</dd>
-            </div>
-          ))
-        }
-      </dl>
-    </div>
+  {
+    boardView ? (
+      <section class="status-content" aria-labelledby="status-summary-title">
+        <div class="status-summary" aria-labelledby="status-summary-title">
+          <h2 id="status-summary-title">Snapshot summary</h2>
+          <p class="page-intro">
+            Generated at <time datetime={boardView.provenance.generatedAt}>
+              {boardView.provenance.generatedAt}
+            </time>{" "}
+            from {boardView.provenance.source}. Loaded from the configured{" "}
+            <code>FKST_SITE_OUT/{SITE_BOARD_FILENAME}</code> artifact.
+          </p>
+          <dl>
+            {counts.map((item) => (
+              <div>
+                <dt>{item.label}</dt>
+                <dd>{item.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
 
-    <div class="status-table-wrap">
-      <table class="status-table">
-        <caption>Committed site-board rows</caption>
-        <thead>
-          <tr>
-            <th scope="col">Kind</th>
-            <th scope="col">Number</th>
-            <th scope="col">Title</th>
-            <th scope="col">State</th>
-            <th scope="col">Labels</th>
-            <th scope="col">Updated</th>
-          </tr>
-        </thead>
-        <tbody>
-          {
-            rows.map((row) => (
+        <div class="status-table-wrap">
+          <table class="status-table">
+            <caption>Generated site-board rows</caption>
+            <thead>
               <tr>
-                <td>{rowKindLabel(row.kind)}</td>
-                <td>
-                  <a href={row.url}>#{row.number}</a>
-                </td>
-                <td>{row.title}</td>
-                <td>{row.state}</td>
-                <td>
-                  {
-                    row.labels.length > 0 ? (
+                <th scope="col">Kind</th>
+                <th scope="col">Number</th>
+                <th scope="col">Title</th>
+                <th scope="col">State</th>
+                <th scope="col">Labels</th>
+                <th scope="col">Updated</th>
+              </tr>
+            </thead>
+            <tbody>
+              {boardView.rows.map((row) => (
+                <tr>
+                  <td>{rowKindLabel(row.kind)}</td>
+                  <td>
+                    <a href={row.url}>#{row.number}</a>
+                  </td>
+                  <td>{row.title}</td>
+                  <td>{row.state}</td>
+                  <td>
+                    {row.labels.length > 0 ? (
                       <span class="status-labels">
                         {row.labels.map((label) => (
                           <span>{label.name}</span>
@@ -92,15 +117,27 @@ function rowKindLabel(kind) {
                       </span>
                     ) : (
                       <span class="status-muted">None</span>
-                    )
-                  }
-                </td>
-                <td>{row.updatedAt}</td>
-              </tr>
-            ))
-          }
-        </tbody>
-      </table>
-    </div>
-  </section>
+                    )}
+                  </td>
+                  <td>{row.updatedAt}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    ) : (
+      <section class="status-content" aria-labelledby="status-unavailable-title">
+        <div class="status-summary">
+          <h2 id="status-unavailable-title">Snapshot unavailable</h2>
+          <p class="page-intro">
+            No status rows are displayed because{" "}
+            <code>FKST_SITE_OUT/{SITE_BOARD_FILENAME}</code> was absent,
+            unreadable, or invalid when this site was built. No committed
+            fixture was used as a fallback.
+          </p>
+        </div>
+      </section>
+    )
+  }
 </BaseLayout>
