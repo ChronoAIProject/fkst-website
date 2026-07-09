@@ -80,7 +80,7 @@ ensure_fkst_packages_checkout() {
 
 usage() {
   cat <<'EOF'
-usage: scripts/run.sh <check|test|supervise> [args]
+usage: scripts/run.sh <check|test|test-affected|supervise> [args]
 
 Hydrates the fkst.lock-resolved fkst-packages checkout, runs website-local checks for
 `check`, then delegates shared orchestration to:
@@ -104,8 +104,64 @@ cmd_check() {
   python3 -B "$ROOT/scripts/probe_site_test.py"
 }
 
+cmd_test() {
+  shared_host_run test "$@"
+  if [ "$#" -eq 0 ]; then
+    echo "=== website status smoke ==="
+    (cd "$ROOT/site" && npm run test:status)
+  fi
+}
+
+changed_paths() {
+  {
+    git -C "$ROOT" diff --name-only HEAD
+    git -C "$ROOT" ls-files --others --exclude-standard
+  } | sed '/^[[:space:]]*$/d' | sort -u
+}
+
+cmd_test_affected() {
+  local paths broad pkg packages
+  paths="$(changed_paths)"
+  if [ -z "$paths" ]; then
+    echo "=== no changed paths; running full test ==="
+    cmd_test
+    return
+  fi
+
+  broad=0
+  packages=""
+  while IFS= read -r path; do
+    case "$path" in
+      .fkst/local-packages/*/*)
+        pkg="${path#".fkst/local-packages/"}"
+        pkg="${pkg%%/*}"
+        case " $packages " in
+          *" $pkg "*) ;;
+          *) packages="$packages $pkg" ;;
+        esac
+        ;;
+      *)
+        broad=1
+        ;;
+    esac
+  done <<EOF_PATHS
+$paths
+EOF_PATHS
+
+  if [ "$broad" -eq 1 ]; then
+    echo "=== broad changes detected; running full test ==="
+    cmd_test
+    return
+  fi
+
+  for pkg in $packages; do
+    echo "=== package-only changes detected; running package test: $pkg ==="
+    cmd_test "$pkg"
+  done
+}
+
 case "${1:-}" in
-  check|test|supervise) ;;
+  check|test|test-affected|supervise) ;;
   -h|--help|help|"") usage; exit 0 ;;
   *) echo "unknown subcommand: $1" >&2; usage >&2; exit 2 ;;
 esac
@@ -116,7 +172,9 @@ shared="$(ensure_fkst_packages_checkout "$pin")"
 
 case "$1" in
   check) shift; cmd_check "$@" ;;
-  test|supervise) exec "$shared/scripts/run.sh" host \
+  test) shift; cmd_test "$@" ;;
+  test-affected) shift; cmd_test_affected "$@" ;;
+  supervise) exec "$shared/scripts/run.sh" host \
     --host-root "$ROOT" \
     --local-packages "$LOCAL_PACKAGES" \
     -- "$@" ;;

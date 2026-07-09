@@ -1,0 +1,30 @@
+{
+  "schema_version": "fkst.site.board.v1",
+  "repo": "ChronoAIProject/fkst-website",
+  "issues": [
+    {
+      "number": 267,
+      "title": "Walking skeleton: render the committed site-board snapshot on /status",
+      "state": "OPEN",
+      "labels": [
+        {
+          "name": "fkst-dev:ready"
+        },
+        {
+          "name": "fkst-class:standard"
+        }
+      ],
+      "updatedAt": "2026-07-09T18:46:17Z",
+      "url": "https://github.com/ChronoAIProject/fkst-website/issues/267"
+    },
+    {
+      "number": 266,
+      "title": "Public /status page rendering the site-board snapshot",
+      "state": "OPEN",
+      "labels": [],
+      "updatedAt": "2026-07-09T18:44:26Z",
+      "url": "https://github.com/ChronoAIProject/fkst-website/issues/266"
+    }
+  ],
+  "prs": []
+}
