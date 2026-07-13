@@ -104,6 +104,14 @@ cmd_check() {
   python3 -B "$ROOT/scripts/probe_site_test.py"
 }
 
+cmd_test() {
+  shared_host_run test "$@"
+  if [ "$#" -eq 0 ]; then
+    echo "=== website status smoke ==="
+    (cd "$ROOT/site" && npm run test:status)
+  fi
+}
+
 case "${1:-}" in
   check|test|supervise) ;;
   -h|--help|help|"") usage; exit 0 ;;
@@ -116,7 +124,8 @@ shared="$(ensure_fkst_packages_checkout "$pin")"
 
 case "$1" in
   check) shift; cmd_check "$@" ;;
-  test|supervise) exec "$shared/scripts/run.sh" host \
+  test) shift; cmd_test "$@" ;;
+  supervise) exec "$shared/scripts/run.sh" host \
     --host-root "$ROOT" \
     --local-packages "$LOCAL_PACKAGES" \
     -- "$@" ;;

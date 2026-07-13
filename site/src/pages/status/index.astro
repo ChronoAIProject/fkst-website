@@ -1,0 +1,106 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import {
+  getAssetHref,
+  getBrandHref,
+  getNav,
+} from "../../site-config";
+import {
+  getSiteBoardRows,
+  getSiteBoardSnapshot,
+} from "../../data/site-board.mjs";
+
+const locale = "en";
+const pageKey = "status";
+const board = getSiteBoardSnapshot();
+const rows = getSiteBoardRows(board);
+const nav = getNav(locale, pageKey);
+const counts = [
+  { label: "Open issues", value: board.issues.length },
+  { label: "Open pull requests", value: board.prs.length },
+  { label: "Snapshot rows", value: rows.length },
+];
+
+function rowKindLabel(kind) {
+  return kind === "prs" ? "PR" : "Issue";
+}
+---
+
+<BaseLayout
+  title="fkst status"
+  description="Current fkst website board snapshot rendered from the committed site-board fixture."
+  lang="en"
+  brandHref={getBrandHref(locale, pageKey)}
+  cssHref={getAssetHref(locale, pageKey, "assets/css/style.css")}
+  nav={nav}
+  footerText="This status page renders the committed fkst.site.board.v1 snapshot fixture at build time."
+>
+  <section class="page-header status-header" aria-labelledby="page-title">
+    <p class="eyebrow">Site board</p>
+    <h1 id="page-title">Status</h1>
+    <p class="page-intro">
+      A deterministic view of the committed <code>fkst.site.board.v1</code>
+      snapshot for <code>{board.repo}</code>.
+    </p>
+  </section>
+
+  <section class="status-content" aria-labelledby="status-summary-title">
+    <div class="status-summary" aria-labelledby="status-summary-title">
+      <h2 id="status-summary-title">Snapshot summary</h2>
+      <dl>
+        {
+          counts.map((item) => (
+            <div>
+              <dt>{item.label}</dt>
+              <dd>{item.value}</dd>
+            </div>
+          ))
+        }
+      </dl>
+    </div>
+
+    <div class="status-table-wrap">
+      <table class="status-table">
+        <caption>Committed site-board rows</caption>
+        <thead>
+          <tr>
+            <th scope="col">Kind</th>
+            <th scope="col">Number</th>
+            <th scope="col">Title</th>
+            <th scope="col">State</th>
+            <th scope="col">Labels</th>
+            <th scope="col">Updated</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            rows.map((row) => (
+              <tr>
+                <td>{rowKindLabel(row.kind)}</td>
+                <td>
+                  <a href={row.url}>#{row.number}</a>
+                </td>
+                <td>{row.title}</td>
+                <td>{row.state}</td>
+                <td>
+                  {
+                    row.labels.length > 0 ? (
+                      <span class="status-labels">
+                        {row.labels.map((label) => (
+                          <span>{label.name}</span>
+                        ))}
+                      </span>
+                    ) : (
+                      <span class="status-muted">None</span>
+                    )
+                  }
+                </td>
+                <td>{row.updatedAt}</td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+</BaseLayout>

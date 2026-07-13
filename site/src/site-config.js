@@ -40,6 +40,9 @@ const pageFiles = {
     en: "about.html",
     zh: "zh/about.html",
   },
+  status: {
+    en: "status/",
+  },
 };
 
 const navLabels = {
