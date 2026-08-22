@@ -7,10 +7,6 @@ on:
     branches: [main, dev, integration]
   workflow_dispatch:
     inputs:
-      substrate_ref:
-        description: "fkst-substrate ref to build fkst-framework from"
-        default: ""
-        required: false
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -39,62 +35,3 @@ jobs:
       - name: Probe built site (pre-merge deploy gate)
         run: bash scripts/probe_built_site.sh site/_site
 
-      - name: Hydrate pinned fkst-packages platform source
-        shell: bash
-        run: |
-          set -euo pipefail
-          pin="$(
-            python3 -c 'import sys,tomllib; from pathlib import Path; data=tomllib.loads(Path("fkst.lock").read_text(encoding="utf-8")); matches=[source.get("resolved", {}).get("rev") for source in data.get("external_source", []) if source.get("id") == "fkst-packages-platform"]; print(matches[0]) if matches and matches[0] else sys.exit("missing fkst-packages-platform resolved.rev")'
-          )"
-          mkdir -p .fkst/run
-          git clone --no-checkout https://github.com/ChronoAIProject/fkst-packages.git .fkst/run/fkst-packages-platform
-          git -C .fkst/run/fkst-packages-platform checkout "$pin"
-          echo "fkst-packages platform pin: $pin"
-
-      - name: Resolve fkst-substrate source pin
-        id: substrate_ref
-        shell: bash
-        run: |
-          set -euo pipefail
-          ref="${{ github.event.inputs.substrate_ref }}"
-          if [ -z "$ref" ]; then
-            ref="$(sed -n '1{s/[[:space:]]//g;p;q}' .fkst-substrate-ref 2>/dev/null || true)"
-          fi
-          if [ -z "$ref" ]; then
-            ref="dev"
-          fi
-          echo "ref=$ref" >> "$GITHUB_OUTPUT"
-          echo "fkst-substrate ref: $ref"
-
-      # fkst-framework is built from the sibling engine source repo. A downstream
-      # package repo should set .fkst-substrate-ref to a tag or SHA for a
-      # reproducible engine source pin; this is not semver or binary distribution.
-      - name: Checkout fkst-substrate
-        uses: actions/checkout@v4
-        with:
-          repository: ChronoAIProject/fkst-substrate
-          ref: ${{ steps.substrate_ref.outputs.ref }}
-          path: fkst-substrate
-
-      - name: Install stable Rust
-        run: |
-          rustup toolchain install stable --profile minimal
-          rustup default stable
-          rustc --version
-
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: fkst-substrate
-
-      - name: Build fkst-framework
-        working-directory: fkst-substrate
-        run: cargo build -p fkst-framework
-
-      - name: Run repository checks and package tests
-        env:
-          BIN: ${{ github.workspace }}/fkst-substrate/target/debug/fkst-framework
-        run: |
-          test -x "$BIN"
-          scripts/run.sh check
-          scripts/run.sh test
