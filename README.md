@@ -72,15 +72,19 @@ scripts/run.sh test   # self-test + conformance + all package tests
 scripts/run.sh check  # pinned shared source ratchets + engine host conformance
 ```
 
+The website-owned wrapper invokes the pinned `fkst-packages` source ratchet
+directly, then uses the already-built `BIN` for engine self-test, conformance,
+and package tests. Long-running supervision belongs to the deployment operator.
+
 CI checks out the engine source from the `.fkst-substrate-ref` git source pin,
 builds `fkst-framework`, then runs `scripts/run.sh check` and
 `scripts/run.sh test`.
 
 ## Shared conformance
 
-This repo does not carry a local `scripts/check_repo.py` copy. Source ratchets
-come from a `ChronoAIProject/fkst-packages` checkout pinned by
-`fkst.lock`:
+This repo does not carry a local `scripts/check_repo.py` copy. The website-owned
+check wrapper invokes that ratchet from a `ChronoAIProject/fkst-packages`
+checkout pinned by `fkst.lock`:
 
 - The fkst-substrate source pin remains `.fkst-substrate-ref`.
 - The fkst-packages platform pin is
