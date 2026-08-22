@@ -8,12 +8,15 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOCK_FILE="$ROOT/fkst.lock"
-CHECKOUT="$ROOT/.fkst/run/fkst-packages-platform"
-REPO_URL="https://github.com/ChronoAIProject/fkst-packages.git"
+RUN_ROOT="$ROOT/.fkst/run"
 LOCAL_PACKAGES="$ROOT/.fkst/local-packages"
 
-read_fkst_packages_pin_from_lock() {
-  python3 - "$LOCK_FILE" <<'PY'
+# Emit "<id>\t<git-url>\t<resolved-rev>" for every external source in the lock. The lock
+# is a table array, and `.fkst/compose/package-roots` addresses roots as `<id>:<path>`, so a
+# host may compose more than one source. Hydrating a single hardcoded id was the one place
+# that plurality was not carried through.
+read_external_sources_from_lock() {
+  python3 - "$LOCK_FILE" <<'PYLOCK'
 import re
 import sys
 import tomllib
@@ -32,28 +35,38 @@ except tomllib.TOMLDecodeError as exc:
 sources = data.get("external_source", [])
 if isinstance(sources, dict):
     sources = [sources]
+if not sources:
+    print("error: fkst.lock declares no external_source", file=sys.stderr)
+    raise SystemExit(1)
 
 for source in sources:
-    if source.get("id") == "fkst-packages-platform":
-        rev = source.get("resolved", {}).get("rev")
-        if not isinstance(rev, str) or not re.fullmatch(r"[0-9a-f]{40}", rev):
-            print(
-                "error: fkst.lock external_source(id=fkst-packages-platform) "
-                "is missing resolved.rev as a full git SHA",
-                file=sys.stderr,
-            )
-            raise SystemExit(1)
-        print(rev)
-        raise SystemExit(0)
-
-print("error: fkst.lock is missing external_source(id=fkst-packages-platform)", file=sys.stderr)
-raise SystemExit(1)
-PY
+    identifier = source.get("id")
+    git_url = source.get("git")
+    rev = source.get("resolved", {}).get("rev")
+    if not isinstance(identifier, str) or not identifier:
+        print("error: fkst.lock external_source is missing id", file=sys.stderr)
+        raise SystemExit(1)
+    if not isinstance(git_url, str) or not git_url:
+        print(f"error: fkst.lock external_source(id={identifier}) is missing git", file=sys.stderr)
+        raise SystemExit(1)
+    if not isinstance(rev, str) or not re.fullmatch(r"[0-9a-f]{40}", rev):
+        print(
+            f"error: fkst.lock external_source(id={identifier}) "
+            "is missing resolved.rev as a full git SHA",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    print(f"{identifier}\t{git_url}\t{rev}")
+PYLOCK
 }
 
-ensure_fkst_packages_checkout() {
-  local pin="$1" current
-  if [ -n "${FKST_PACKAGES_RUNNER:-}" ]; then
+# Hydrate one external source into `.fkst/run/<id>`. A checkout already at the pinned
+# revision is reused untouched, so a source that has not moved costs nothing; a source whose
+# pin has moved is replaced. FKST_PACKAGES_RUNNER still overrides the shared platform source
+# for local development, and only that one, because it names a single runner.
+ensure_source_checkout() {
+  local identifier="$1" git_url="$2" pin="$3" checkout current
+  if [ "$identifier" = "fkst-packages-platform" ] && [ -n "${FKST_PACKAGES_RUNNER:-}" ]; then
     [ -d "$FKST_PACKAGES_RUNNER" ] || {
       echo "error: FKST_PACKAGES_RUNNER does not exist: $FKST_PACKAGES_RUNNER" >&2
       return 1
@@ -61,21 +74,38 @@ ensure_fkst_packages_checkout() {
     printf '%s\n' "$FKST_PACKAGES_RUNNER"
     return 0
   fi
-  if [ -d "$CHECKOUT/.git" ]; then
-    current="$(git -C "$CHECKOUT" rev-parse HEAD 2>/dev/null || true)"
+  checkout="$RUN_ROOT/$identifier"
+  if [ -d "$checkout/.git" ]; then
+    current="$(git -C "$checkout" rev-parse HEAD 2>/dev/null || true)"
     if [ "$current" = "$pin" ]; then
-      printf '%s\n' "$CHECKOUT"
+      printf '%s\n' "$checkout"
       return 0
     fi
-    rm -rf "$CHECKOUT"
-  elif [ -e "$CHECKOUT" ]; then
-    rm -rf "$CHECKOUT"
+    rm -rf "$checkout"
+  elif [ -e "$checkout" ]; then
+    rm -rf "$checkout"
   fi
 
-  mkdir -p "$(dirname "$CHECKOUT")"
-  git clone --quiet --no-checkout "$REPO_URL" "$CHECKOUT"
-  git -C "$CHECKOUT" checkout --quiet "$pin"
-  printf '%s\n' "$CHECKOUT"
+  mkdir -p "$(dirname "$checkout")"
+  git clone --quiet --no-checkout "$git_url" "$checkout"
+  git -C "$checkout" checkout --quiet "$pin"
+  printf '%s\n' "$checkout"
+}
+
+# Hydrate every source the lock declares, and report the shared platform checkout, which the
+# source ratchets still run from.
+hydrate_all_sources() {
+  local identifier git_url pin checkout
+  shared=""
+  while IFS=$'\t' read -r identifier git_url pin; do
+    [ -n "$identifier" ] || continue
+    checkout="$(ensure_source_checkout "$identifier" "$git_url" "$pin")" || return 1
+    [ "$identifier" = "fkst-packages-platform" ] && shared="$checkout"
+  done < <(read_external_sources_from_lock)
+  [ -n "$shared" ] || {
+    echo "error: fkst.lock is missing external_source(id=fkst-packages-platform)" >&2
+    return 1
+  }
 }
 
 usage() {
@@ -114,7 +144,12 @@ load_package_roots() {
     line="$(printf '%s' "$line" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
     [ -n "$line" ] || continue
     case "$line" in
+      # `<source-id>:<path>` addresses a root inside a hydrated source. `fkst-packages:` is
+      # the legacy spelling of the shared platform and keeps working; any other prefix is
+      # resolved against `.fkst/run/<source-id>`, so composing a second source needs no
+      # change here.
       fkst-packages:*) path="$shared/${line#fkst-packages:}" ;;
+      *:*) path="$RUN_ROOT/${line%%:*}/${line#*:}" ;;
       *) path="$ROOT/$line" ;;
     esac
     [ -d "$path" ] || {
@@ -224,8 +259,7 @@ case "${1:-}" in
   *) echo "unknown subcommand: $1" >&2; usage >&2; exit 2 ;;
 esac
 
-pin="$(read_fkst_packages_pin_from_lock)"
-shared="$(ensure_fkst_packages_checkout "$pin")"
+hydrate_all_sources
 
 case "$1" in
   check) shift; cmd_check "$@" ;;

@@ -6,3 +6,4 @@
 # fkst-packages:<path> is resolved from the pinned shared fkst-packages checkout.
 .fkst/local-packages/site-board
 fkst-packages:packages/idle-detector
+fkst-website-packages:packages/site-radar
