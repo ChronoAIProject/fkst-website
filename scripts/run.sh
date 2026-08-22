@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Thin host bootstrapper for fkst-website.
+# Repository check and test entrypoint for fkst-website.
 #
-# This repo owns only the host glue: hydrate the pinned fkst-packages checkout,
-# keep website-owned checks local, then delegate shared fkst orchestration to
-# the public host entrypoint.
+# This repo owns its test orchestration. The pinned fkst-packages checkout supplies
+# source ratchets and composed package roots; the already-built engine supplies
+# self-test, conformance, and package-test primitives.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -80,53 +80,154 @@ ensure_fkst_packages_checkout() {
 
 usage() {
   cat <<'EOF'
-usage: scripts/run.sh <check|test|supervise> [args]
+usage: scripts/run.sh <check|test> [args]
 
-Hydrates the fkst.lock-resolved fkst-packages checkout, runs website-local checks for
-`check`, then delegates shared orchestration to:
-  <fkst-packages>/scripts/run.sh host --host-root <this repo> --local-packages <this repo>/.fkst/local-packages -- <command>
+Hydrates the fkst.lock-resolved fkst-packages checkout for shared source ratchets
+and composed package roots. Test orchestration remains website-owned.
 EOF
 }
 
-shared_host_run() {
-  "$shared/scripts/run.sh" host \
-    --host-root "$ROOT" \
-    --local-packages "$LOCAL_PACKAGES" \
-    -- "$@"
+resolve_bin() {
+  if [ -z "${BIN:-}" ] && [ -f "$ROOT/.env" ]; then
+    # shellcheck disable=SC1091
+    source "$ROOT/.env"
+  fi
+  [ -n "${BIN:-}" ] || {
+    echo "error: BIN is required; set it in the environment or $ROOT/.env" >&2
+    return 1
+  }
+  [ -x "$BIN" ] || {
+    echo "error: BIN is not executable: $BIN" >&2
+    return 1
+  }
+}
+
+load_package_roots() {
+  local roots_file="$ROOT/.fkst/compose/package-roots" raw line path root_count=0
+  ENGINE_PACKAGE_ROOT_ARGS=()
+  [ -f "$roots_file" ] || {
+    echo "error: missing package-root declaration: $roots_file" >&2
+    return 1
+  }
+  while IFS= read -r raw || [ -n "$raw" ]; do
+    line="${raw%%#*}"
+    line="$(printf '%s' "$line" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
+    [ -n "$line" ] || continue
+    case "$line" in
+      fkst-packages:*) path="$shared/${line#fkst-packages:}" ;;
+      *) path="$ROOT/$line" ;;
+    esac
+    [ -d "$path" ] || {
+      echo "error: configured package root does not exist: $path" >&2
+      return 1
+    }
+    ENGINE_PACKAGE_ROOT_ARGS+=(--package-root "$path")
+    root_count=$((root_count + 1))
+  done < "$roots_file"
+  [ "$root_count" -gt 0 ] || {
+    echo "error: no package roots declared in $roots_file" >&2
+    return 1
+  }
+}
+
+run_source_ratchets() {
+  local checker="$shared/scripts/check_repo.py" args=(
+    --project-root "$ROOT"
+  )
+  [ -f "$checker" ] || {
+    echo "error: pinned source ratchet does not exist: $checker" >&2
+    return 1
+  }
+  if [ -d "$ROOT/.fkst/conformance/allowlists" ]; then
+    args+=(--allowlist-dir "$ROOT/.fkst/conformance/allowlists")
+  fi
+  echo "=== host source ratchets ==="
+  PYTHONPATH="$shared/scripts${PYTHONPATH:+:$PYTHONPATH}" \
+    python3 -B "$checker" "${args[@]}"
+}
+
+run_engine_conformance() {
+  echo "=== host engine conformance ==="
+  "$BIN" conformance --project-root "$ROOT" "${ENGINE_PACKAGE_ROOT_ARGS[@]}"
+}
+
+cleanup_test_roots() {
+  [ -n "${TEST_RUNTIME_ROOT:-}" ] && rm -rf -- "$TEST_RUNTIME_ROOT"
+  [ -n "${TEST_DURABLE_ROOT:-}" ] && rm -rf -- "$TEST_DURABLE_ROOT"
 }
 
 cmd_check() {
-  # The shared host check preserves the old no-BIN path: source ratchets run
-  # before fkst-framework resolution. Keep website probe tests host-local.
   python3 -B "$ROOT/scripts/check_single_platform_pin.py"
-  shared_host_run check
+  run_source_ratchets
+  resolve_bin
+  load_package_roots
+  run_engine_conformance
   echo "=== website probe_site_test.py ==="
   python3 -B "$ROOT/scripts/probe_site_test.py"
 }
 
 cmd_test() {
-  shared_host_run test "$@"
-  if [ "$#" -eq 0 ]; then
+  local target="" pkg name ran=0
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      -v|--verbose) FKST_TEST_VERBOSE=1; export FKST_TEST_VERBOSE ;;
+      -*) echo "unknown test flag: $1" >&2; return 2 ;;
+      *)
+        [ -z "$target" ] || { echo "test accepts at most one package name" >&2; return 2; }
+        target="$1" ;;
+    esac
+    shift
+  done
+
+  resolve_bin
+  load_package_roots
+  TEST_RUNTIME_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/fkst-website-test-rt.XXXXXX")"
+  TEST_DURABLE_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/fkst-website-test-durable.XXXXXX")"
+  trap cleanup_test_roots EXIT
+  export FKST_RUNTIME_ROOT="$TEST_RUNTIME_ROOT"
+  export FKST_DURABLE_ROOT="$TEST_DURABLE_ROOT"
+  unset FKST_GITHUB_WRITE FKST_SUPERVISOR_PID
+
+  echo "=== self-test ==="
+  "$BIN" --self-test
+  run_engine_conformance
+  for pkg in "$LOCAL_PACKAGES"/*; do
+    [ -d "$pkg" ] || continue
+    name="$(basename "$pkg")"
+    [ -z "$target" ] || [ "$name" = "$target" ] || continue
+    echo "=== $name ==="
+    "$BIN" test --project-root "$ROOT" --package-root "$pkg"
+    ran=$((ran + 1))
+  done
+  if [ "$ran" -eq 0 ]; then
+    if [ -n "$target" ]; then
+      echo "no website packages matched for '$target'" >&2
+    else
+      echo "no website packages found" >&2
+    fi
+    return 1
+  fi
+  cleanup_test_roots
+  trap - EXIT
+  TEST_RUNTIME_ROOT=""
+  TEST_DURABLE_ROOT=""
+
+  if [ -z "$target" ]; then
     echo "=== website status smoke ==="
     (cd "$ROOT/site" && npm run test:status)
   fi
 }
 
 case "${1:-}" in
-  check|test|supervise) ;;
+  check|test) ;;
   -h|--help|help|"") usage; exit 0 ;;
   *) echo "unknown subcommand: $1" >&2; usage >&2; exit 2 ;;
 esac
 
 pin="$(read_fkst_packages_pin_from_lock)"
 shared="$(ensure_fkst_packages_checkout "$pin")"
-[ -x "$shared/scripts/run.sh" ] || { echo "error: shared run.sh is not executable: $shared/scripts/run.sh" >&2; exit 1; }
 
 case "$1" in
   check) shift; cmd_check "$@" ;;
   test) shift; cmd_test "$@" ;;
-  supervise) exec "$shared/scripts/run.sh" host \
-    --host-root "$ROOT" \
-    --local-packages "$LOCAL_PACKAGES" \
-    -- "$@" ;;
 esac
