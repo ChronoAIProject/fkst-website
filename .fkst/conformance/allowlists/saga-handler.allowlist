@@ -1,3 +1,0 @@
-# Existing free-form department baseline for fkst-website v0.
-# Format: packages/<pkg>/departments/<dept>/main.lua
-packages/site-board/departments/board_scan/main.lua
